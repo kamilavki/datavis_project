@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Renewable Energy Race</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+    .wrapper { max-width: 760px; margin: 0 auto; }
+
+    .header { margin-bottom: 20px; }
+    .header h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+    .header p { font-size: 0.88rem; color: #8b949e; }
+
+    .year-display {
+      font-size: 5rem;
+      font-weight: 900;
+      color: #ffffff18;
+      position: absolute;
+      right: 0;
+      top: 0;
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      margin-bottom: 16px;
+      min-height: 520px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+      transition: all 0.4s ease;
+    }
+
+    .rank {
+      width: 22px;
+      font-size: 0.72rem;
+      color: #8b949e;
+      text-align: right;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+
+    .country-name {
+      width: 130px;
+      font-size: 0.82rem;
+      text-align: right;
+      margin-right: 10px;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #e6edf3;
+    }
+
+    .bar-container {
+      flex: 1;
+      background: #ffffff0d;
+      border-radius: 4px;
+      height: 26px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 6px;
+      min-width: 2px;
+    }
+
+    .bar-value {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #playBtn {
+      background: #238636;
+      color: #fff;
+    }
+    #playBtn:hover { background: #2ea043; }
+
+    #resetBtn {
+      background: #21262d;
+      color: #e6edf3;
+      border: 1px solid #30363d;
+    }
+    #resetBtn:hover { background: #30363d; }
+
+    .speed-label { font-size: 0.82rem; color: #8b949e; }
+
+    input[type=range] {
+      width: 100px;
+      accent-color: #238636;
+    }
+
+    .year-pill {
+      background: #238636;
+      color: #fff;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-left: auto;
+    }
+
+    .progress-bar {
+      height: 3px;
+      background: #21262d;
+      border-radius: 2px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #238636;
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    .footnote {
+      font-size: 0.75rem;
+      color: #8b949e;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h2>🏁 The Renewable Energy Race</h2>
+    <p>Which European countries are winning the shift from fossil fuels to renewables? (1990–2024)</p>
+  </div>
+
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <div class="chart-wrapper" id="chartWrapper">
+    <div class="year-display" id="yearDisplay">1990</div>
+    <div id="chart"></div>
+  </div>
+
+  <div class="controls">
+    <button id="playBtn">▶ Play</button>
+    <button id="resetBtn">↺ Reset</button>
+    <span class="speed-label">Speed</span>
+    <input type="range" id="speedSlider" min="1" max="5" value="3"/>
+    <div class="year-pill" id="yearPill">1990</div>
+  </div>
+  <p class="footnote">Data: Eurostat NRG_BAL_S + Our World in Data · Renewable share = renewables & biofuels as % of gross available energy</p>
+</div>
+
+<script>
+const DATA = {"1990":[{"c":"Iceland","v":66.9},{"c":"Norway","v":53.3},{"c":"Sweden","v":24.0},{"c":"Albania","v":22.7},{"c":"Austria","v":19.9},{"c":"Finland","v":18.8},{"c":"Portugal","v":18.4},{"c":"Croatia","v":12.4},{"c":"Latvia","v":12.4},{"c":"Serbia","v":9.2},{"c":"Slovenia","v":9.1},{"c":"Spain","v":6.8},{"c":"France","v":6.6},{"c":"Denmark","v":5.7},{"c":"Greece","v":4.5},{"c":"Italy","v":4.3},{"c":"Hungary","v":2.6},{"c":"Romania","v":2.5},{"c":"Czechia","v":2.3},{"c":"Lithuania","v":2.0},{"c":"Estonia","v":1.7},{"c":"North Macedonia","v":1.7},{"c":"Ireland","v":1.6},{"c":"Slovakia","v":1.5},{"c":"Poland","v":1.5},{"c":"Germany","v":1.5},{"c":"Bulgaria","v":1.1},{"c":"Netherlands","v":0.9},{"c":"Belgium","v":0.9},{"c":"Luxembourg","v":0.5},{"c":"Ukraine","v":0.5},{"c":"United Kingdom","v":0.5},{"c":"Cyprus","v":0.4},{"c":"Malta","v":0.0}],"1991":[{"c":"Iceland","v":68.3},{"c":"Norway","v":47.6},{"c":"Albania","v":35.6},{"c":"Sweden","v":22.1},{"c":"Croatia","v":20.7},{"c":"Austria","v":19.5},{"c":"Portugal","v":18.1},{"c":"Finland","v":18.0},{"c":"Latvia","v":13.7},{"c":"Serbia","v":11.0},{"c":"Slovenia","v":10.4},{"c":"France","v":7.1},{"c":"Spain","v":6.4},{"c":"Denmark","v":5.7},{"c":"Greece","v":5.0},{"c":"Italy","v":4.9},{"c":"Romania","v":3.8},{"c":"North Macedonia","v":3.0},{"c":"Hungary","v":2.9},{"c":"Czechia","v":2.5},{"c":"Estonia","v":1.8},{"c":"Lithuania","v":1.8},{"c":"Ireland","v":1.6},{"c":"Bulgaria","v":1.5},{"c":"Germany","v":1.4},{"c":"Slovakia","v":1.4},{"c":"Poland","v":1.3},{"c":"Netherlands","v":0.9},{"c":"Belgium","v":0.9},{"c":"Ukraine","v":0.5},{"c":"Luxembourg","v":0.5},{"c":"United Kingdom","v":0.5},{"c":"Cyprus","v":0.3},{"c":"Malta","v":0.0}],"1992":[{"c":"Iceland","v":65.9},{"c":"Norway","v":49.2},{"c":"Albania","v":47.2},{"c":"Sweden","v":25.7},{"c":"Austria","v":21.2},{"c":"Finland","v":19.2},{"c":"Croatia","v":19.2},{"c":"Latvia","v":15.6},{"c":"Portugal","v":14.8},{"c":"Slovenia","v":10.8},{"c":"Serbia","v":10.1},{"c":"North Macedonia","v":9.7},{"c":"France","v":7.4},{"c":"Denmark","v":6.3},{"c":"Spain","v":5.2},{"c":"Italy","v":5.2},{"c":"Greece","v":4.5},{"c":"Romania","v":3.9},{"c":"Czechia","v":3.8},{"c":"Estonia","v":3.3},{"c":"Hungary","v":3.2},{"c":"Lithuania","v":2.7},{"c":"Slovakia","v":1.6},{"c":"Ireland","v":1.6},{"c":"Germany","v":1.6},{"c":"Bulgaria","v":1.6},{"c":"Poland","v":1.5},{"c":"Netherlands","v":0.9},{"c":"Luxembourg","v":0.9},{"c":"Belgium","v":0.9},{"c":"United Kingdom","v":0.6},{"c":"Ukraine","v":0.4},{"c":"Cyprus","v":0.3},{"c":"Malta","v":0.0}],"1993":[{"c":"Iceland","v":65.8},{"c":"Norway","v":47.6},{"c":"Albania","v":47.4},{"c":"Sweden","v":26.5},{"c":"Austria","v":22.0},{"c":"Latvia","v":19.9},{"c":"Croatia","v":19.7},{"c":"Finland","v":19.3},{"c":"Portugal","v":17.0},{"c":"Serbia","v":11.1},{"c":"Slovenia","v":9.7},{"c":"North Macedonia","v":9.0},{"c":"France","v":7.0},{"c":"Denmark","v":6.3},{"c":"Spain","v":6.0},{"c":"Italy","v":5.2},{"c":"Romania","v":4.9},{"c":"Lithuania","v":4.9},{"c":"Greece","v":4.6},{"c":"Poland","v":3.9},{"c":"Czechia","v":3.8},{"c":"Estonia","v":3.7},{"c":"Hungary","v":3.2},{"c":"Slovakia","v":2.7},{"c":"Germany","v":1.6},{"c":"Ireland","v":1.5},{"c":"Bulgaria","v":1.3},{"c":"Netherlands","v":1.0},{"c":"Luxembourg","v":0.9},{"c":"Belgium","v":0.8},{"c":"Ukraine","v":0.6},{"c":"United Kingdom","v":0.6},{"c":"Cyprus","v":0.3},{"c":"Malta","v":0.0}],"1994":[{"c":"Iceland","v":65.6},{"c":"Albania","v":46.2},{"c":"Norway","v":45.8},{"c":"Latvia","v":23.0},{"c":"Sweden","v":22.5},{"c":"Austria","v":21.5},{"c":"Croatia","v":19.7},{"c":"Finland","v":18.6},{"c":"Portugal","v":17.8},{"c":"Serbia","v":12.5},{"c":"North Macedonia","v":10.4},{"c":"Slovenia","v":9.8},{"c":"France","v":7.4},{"c":"Spain","v":6.1},{"c":"Denmark","v":6.0},{"c":"Estonia","v":5.8},{"c":"Lithuania","v":5.7},{"c":"Italy","v":5.5},{"c":"Romania","v":5.3},{"c":"Greece","v":4.5},{"c":"Poland","v":4.0},{"c":"Czechia","v":3.8},{"c":"Hungary","v":3.3},{"c":"Slovakia","v":3.1},{"c":"Germany","v":1.7},{"c":"Ireland","v":1.6},{"c":"Bulgaria","v":1.3},{"c":"Netherlands","v":1.0},{"c":"Luxembourg","v":0.9},{"c":"Ukraine","v":0.8},{"c":"United Kingdom","v":0.8},{"c":"Belgium","v":0.7},{"c":"Cyprus","v":0.6},{"c":"Malta","v":0.0}],"1995":[{"c":"Iceland","v":65.9},{"c":"Albania","v":50.9},{"c":"Norway","v":48.8},{"c":"Latvia","v":26.3},{"c":"Sweden","v":24.9},{"c":"Austria","v":21.6},{"c":"Finland","v":20.7},{"c":"Croatia","v":20.1},{"c":"Portugal","v":15.6},{"c":"Serbia","v":11.6},{"c":"North Macedonia","v":10.7},{"c":"Slovenia","v":8.9},{"c":"Estonia","v":8.6},{"c":"France","v":7.0},{"c":"Denmark","v":6.3},{"c":"Romania","v":6.0},{"c":"Lithuania","v":5.5},{"c":"Spain","v":5.2},{"c":"Greece","v":4.8},{"c":"Italy","v":4.7},{"c":"Poland","v":3.9},{"c":"Czechia","v":3.4},{"c":"Hungary","v":3.3},{"c":"Slovakia","v":2.8},{"c":"Cyprus","v":2.2},{"c":"Germany","v":1.7},{"c":"Bulgaria","v":1.7},{"c":"Ireland","v":1.4},{"c":"Netherlands","v":1.0},{"c":"Luxembourg","v":1.0},{"c":"Belgium","v":0.9},{"c":"United Kingdom","v":0.8},{"c":"Ukraine","v":0.7},{"c":"Malta","v":0.0}],"1996":[{"c":"Iceland","v":64.6},{"c":"Albania","v":55.9},{"c":"Norway","v":43.0},{"c":"Latvia","v":25.8},{"c":"Croatia","v":23.0},{"c":"Sweden","v":22.5},{"c":"Austria","v":20.1},{"c":"Finland","v":19.4},{"c":"Portugal","v":18.0},{"c":"Serbia","v":10.5},{"c":"Estonia","v":10.2},{"c":"North Macedonia","v":9.4},{"c":"Slovenia","v":9.1},{"c":"Romania","v":8.0},{"c":"France","v":6.7},{"c":"Spain","v":6.6},{"c":"Denmark","v":6.0},{"c":"Lithuania","v":5.5},{"c":"Italy","v":5.1},{"c":"Greece","v":5.0},{"c":"Poland","v":3.7},{"c":"Czechia","v":3.3},{"c":"Hungary","v":3.2},{"c":"Slovakia","v":2.4},{"c":"Bulgaria","v":2.1},{"c":"Cyprus","v":2.0},{"c":"Germany","v":1.7},{"c":"Ireland","v":1.4},{"c":"Netherlands","v":1.1},{"c":"Luxembourg","v":0.9},{"c":"Belgium","v":0.9},{"c":"United Kingdom","v":0.8},{"c":"Ukraine","v":0.7},{"c":"Malta","v":0.0}],"1997":[{"c":"Iceland","v":64.6},{"c":"Albania","v":59.4},{"c":"Norway","v":42.8},{"c":"Latvia","v":28.7},{"c":"Sweden","v":26.2},{"c":"Austria","v":20.5},{"c":"Finland","v":20.4},{"c":"Croatia","v":19.6},{"c":"Portugal","v":16.9},{"c":"Romania","v":10.8},{"c":"North Macedonia","v":10.5},{"c":"Estonia","v":10.4},{"c":"Serbia","v":9.4},{"c":"Slovenia","v":8.0},{"c":"Denmark","v":6.9},{"c":"France","v":6.5},{"c":"Lithuania","v":6.0},{"c":"Spain","v":5.9},{"c":"Italy","v":5.2},{"c":"Greece","v":4.8},{"c":"Poland","v":3.8},{"c":"Czechia","v":3.6},{"c":"Hungary","v":3.2},{"c":"Slovakia","v":2.4},{"c":"Bulgaria","v":2.3},{"c":"Germany","v":2.0},{"c":"Cyprus","v":2.0},{"c":"Ireland","v":1.4},{"c":"Netherlands","v":1.3},{"c":"Luxembourg","v":1.0},{"c":"United Kingdom","v":0.8},{"c":"Belgium","v":0.8},{"c":"Ukraine","v":0.8},{"c":"Malta","v":0.0}],"1998":[{"c":"Iceland","v":65.4},{"c":"Albania","v":52.2},{"c":"Norway","v":43.5},{"c":"Latvia","v":32.1},{"c":"Sweden","v":26.6},{"c":"Finland","v":21.7},{"c":"Austria","v":20.3},{"c":"Croatia","v":19.5},{"c":"Portugal","v":15.7},{"c":"Romania","v":11.3},{"c":"Estonia","v":9.5},{"c":"Serbia","v":9.4},{"c":"North Macedonia","v":9.1},{"c":"Slovenia","v":8.6},{"c":"Denmark","v":7.3},{"c":"Lithuania","v":6.4},{"c":"France","v":6.2},{"c":"Spain","v":5.7},{"c":"Italy","v":5.3},{"c":"Greece","v":4.6},{"c":"Poland","v":4.1},{"c":"Czechia","v":3.8},{"c":"Bulgaria","v":3.3},{"c":"Hungary","v":3.2},{"c":"Slovakia","v":2.5},{"c":"Germany","v":2.2},{"c":"Cyprus","v":1.9},{"c":"Ireland","v":1.7},{"c":"Netherlands","v":1.3},{"c":"Ukraine","v":1.2},{"c":"Luxembourg","v":1.1},{"c":"United Kingdom","v":0.9},{"c":"Belgium","v":0.9},{"c":"Malta","v":0.0}],"1999":[{"c":"Iceland","v":68.9},{"c":"Norway","v":44.2},{"c":"Albania","v":38.9},{"c":"Latvia","v":31.2},{"c":"Sweden","v":25.8},{"c":"Austria","v":22.7},{"c":"Finland","v":21.7},{"c":"Croatia","v":19.9},{"c":"Serbia","v":13.5},{"c":"Portugal","v":13.0},{"c":"Romania","v":12.1},{"c":"North Macedonia","v":11.5},{"c":"Estonia","v":10.3},{"c":"Slovenia","v":8.5},{"c":"Denmark","v":8.0},{"c":"Lithuania","v":7.7},{"c":"France","v":6.4},{"c":"Italy","v":5.7},{"c":"Greece","v":4.9},{"c":"Spain","v":4.8},{"c":"Czechia","v":4.3},{"c":"Poland","v":4.0},{"c":"Bulgaria","v":3.6},{"c":"Hungary","v":3.3},{"c":"Slovakia","v":2.6},{"c":"Germany","v":2.3},{"c":"Cyprus","v":1.9},{"c":"Ireland","v":1.6},{"c":"Netherlands","v":1.4},{"c":"Ukraine","v":1.1},{"c":"Luxembourg","v":1.0},{"c":"Belgium","v":1.0},{"c":"United Kingdom","v":0.9},{"c":"Malta","v":0.0}],"2000":[{"c":"Iceland","v":70.6},{"c":"Norway","v":51.1},{"c":"Albania","v":35.4},{"c":"Latvia","v":30.8},{"c":"Sweden","v":30.0},{"c":"Finland","v":23.2},{"c":"Austria","v":22.5},{"c":"Croatia","v":18.3},{"c":"Portugal","v":14.4},{"c":"Slovenia","v":13.7},{"c":"North Macedonia","v":12.2},{"c":"Serbia","v":12.1},{"c":"Romania","v":11.0},{"c":"Estonia","v":10.7},{"c":"Lithuania","v":9.1},{"c":"Denmark","v":9.0},{"c":"France","v":6.0},{"c":"Italy","v":5.7},{"c":"Spain","v":5.2},{"c":"Greece","v":4.6},{"c":"Poland","v":4.2},{"c":"Bulgaria","v":4.1},{"c":"Czechia","v":3.9},{"c":"Hungary","v":3.3},{"c":"Slovakia","v":2.8},{"c":"Germany","v":2.6},{"c":"Cyprus","v":1.7},{"c":"Ireland","v":1.6},{"c":"Netherlands","v":1.5},{"c":"Luxembourg","v":1.1},{"c":"Belgium","v":1.0},{"c":"United Kingdom","v":1.0},{"c":"Ukraine","v":0.9},{"c":"Malta","v":0.0}],"2001":[{"c":"Iceland","v":70.8},{"c":"Norway","v":41.0},{"c":"Latvia","v":30.0},{"c":"Albania","v":29.9},{"c":"Sweden","v":27.3},{"c":"Finland","v":21.9},{"c":"Austria","v":21.6},{"c":"Croatia","v":19.4},{"c":"Portugal","v":15.4},{"c":"Slovenia","v":14.1},{"c":"Serbia","v":11.2},{"c":"Estonia","v":10.7},{"c":"Denmark","v":9.6},{"c":"Romania","v":9.3},{"c":"North Macedonia","v":8.7},{"c":"Lithuania","v":8.6},{"c":"France","v":6.2},{"c":"Spain","v":6.1},{"c":"Italy","v":5.9},{"c":"Poland","v":4.5},{"c":"Greece","v":4.3},{"c":"Slovakia","v":4.1},{"c":"Czechia","v":4.1},{"c":"Bulgaria","v":3.5},{"c":"Hungary","v":3.4},{"c":"Germany","v":2.7},{"c":"Cyprus","v":1.7},{"c":"Ireland","v":1.5},{"c":"Netherlands","v":1.5},{"c":"Belgium","v":1.1},{"c":"Luxembourg","v":1.0},{"c":"Ukraine","v":1.0},{"c":"United Kingdom","v":1.0},{"c":"Malta","v":0.0}],"2002":[{"c":"Iceland","v":70.5},{"c":"Norway","v":47.6},{"c":"Latvia","v":29.3},{"c":"Albania","v":26.9},{"c":"Sweden","v":24.8},{"c":"Finland","v":21.6},{"c":"Austria","v":20.9},{"c":"Croatia","v":17.2},{"c":"Portugal","v":13.1},{"c":"Slovenia","v":12.0},{"c":"Estonia","v":11.5},{"c":"Denmark","v":10.5},{"c":"Serbia","v":10.5},{"c":"Romania","v":9.8},{"c":"North Macedonia","v":8.8},{"c":"Lithuania","v":8.5},{"c":"Italy","v":6.1},{"c":"France","v":5.6},{"c":"Spain","v":5.0},{"c":"Poland","v":4.6},{"c":"Czechia","v":4.6},{"c":"Greece","v":4.5},{"c":"Bulgaria","v":4.3},{"c":"Slovakia","v":4.0},{"c":"Hungary","v":3.4},{"c":"Germany","v":3.1},{"c":"Cyprus","v":1.8},{"c":"Ireland","v":1.7},{"c":"Netherlands","v":1.6},{"c":"Belgium","v":1.1},{"c":"United Kingdom","v":1.1},{"c":"Luxembourg","v":0.9},{"c":"Ukraine","v":0.8},{"c":"Malta","v":0.0}],"2003":[{"c":"Iceland","v":70.6},{"c":"Norway","v":37.2},{"c":"Albania","v":30.4},{"c":"Latvia","v":28.9},{"c":"Sweden","v":23.8},{"c":"Finland","v":20.7},{"c":"Austria","v":18.4},{"c":"Croatia","v":17.4},{"c":"Portugal","v":16.0},{"c":"Slovenia","v":12.2},{"c":"Denmark","v":11.4},{"c":"Estonia","v":11.3},{"c":"North Macedonia","v":10.9},{"c":"Romania","v":10.0},{"c":"Serbia","v":9.4},{"c":"Lithuania","v":8.4},{"c":"Italy","v":6.9},{"c":"Spain","v":6.5},{"c":"France","v":5.6},{"c":"Greece","v":4.8},{"c":"Bulgaria","v":4.8},{"c":"Poland","v":4.5},{"c":"Czechia","v":4.1},{"c":"Germany","v":4.0},{"c":"Slovakia","v":3.5},{"c":"Hungary","v":3.4},{"c":"Cyprus","v":1.8},{"c":"Ireland","v":1.6},{"c":"Netherlands","v":1.6},{"c":"Belgium","v":1.3},{"c":"United Kingdom","v":1.1},{"c":"Luxembourg","v":1.0},{"c":"Ukraine","v":0.8},{"c":"Malta","v":0.0}],"2004":[{"c":"Iceland","v":68.9},{"c":"Norway","v":36.3},{"c":"Albania","v":31.5},{"c":"Latvia","v":31.0},{"c":"Sweden","v":24.2},{"c":"Finland","v":22.7},{"c":"Austria","v":19.4},{"c":"Croatia","v":19.1},{"c":"Portugal","v":13.9},{"c":"Slovenia","v":13.2},{"c":"Denmark","v":13.0},{"c":"Romania","v":11.6},{"c":"North Macedonia","v":11.2},{"c":"Estonia","v":10.8},{"c":"Serbia","v":9.5},{"c":"Lithuania","v":8.8},{"c":"Italy","v":6.9},{"c":"Spain","v":5.9},{"c":"France","v":5.6},{"c":"Bulgaria","v":5.2},{"c":"Greece","v":4.8},{"c":"Poland","v":4.7},{"c":"Germany","v":4.6},{"c":"Czechia","v":4.4},{"c":"Slovakia","v":4.0},{"c":"Hungary","v":3.6},{"c":"Cyprus","v":2.1},{"c":"Ireland","v":1.9},{"c":"Netherlands","v":1.8},{"c":"Belgium","v":1.4},{"c":"United Kingdom","v":1.4},{"c":"Luxembourg","v":1.1},{"c":"Ukraine","v":0.9},{"c":"Malta","v":0.0}],"2005":[{"c":"Iceland","v":69.3},{"c":"Norway","v":43.2},{"c":"Albania","v":30.8},{"c":"Latvia","v":30.4},{"c":"Montenegro","v":29.2},{"c":"Sweden","v":27.3},{"c":"Finland","v":22.9},{"c":"Austria","v":20.9},{"c":"Croatia","v":18.9},{"c":"Denmark","v":14.2},{"c":"Slovenia","v":13.4},{"c":"Romania","v":12.8},{"c":"Portugal","v":12.4},{"c":"North Macedonia","v":11.8},{"c":"Serbia","v":11.1},{"c":"Estonia","v":10.5},{"c":"Lithuania","v":9.7},{"c":"Italy","v":7.4},{"c":"Hungary","v":5.9},{"c":"France","v":5.7},{"c":"Spain","v":5.5},{"c":"Bulgaria","v":5.5},{"c":"Germany","v":5.4},{"c":"Greece","v":5.0},{"c":"Poland","v":4.8},{"c":"Czechia","v":4.6},{"c":"Slovakia","v":4.3},{"c":"Ireland","v":2.4},{"c":"Netherlands","v":2.3},{"c":"Cyprus","v":1.9},{"c":"Belgium","v":1.7},{"c":"United Kingdom","v":1.6},{"c":"Luxembourg","v":1.5},{"c":"Ukraine","v":0.9},{"c":"Malta","v":0.0}],"2006":[{"c":"Iceland","v":73.4},{"c":"Norway","v":38.6},{"c":"Albania","v":32.0},{"c":"Latvia","v":28.8},{"c":"Sweden","v":27.1},{"c":"Montenegro","v":25.8},{"c":"Finland","v":22.6},{"c":"Austria","v":22.2},{"c":"Croatia","v":17.7},{"c":"Portugal","v":15.7},{"c":"Denmark","v":13.4},{"c":"Slovenia","v":12.6},{"c":"North Macedonia","v":12.1},{"c":"Romania","v":11.9},{"c":"Lithuania","v":10.3},{"c":"Serbia","v":9.9},{"c":"Estonia","v":9.4},{"c":"Italy","v":8.1},{"c":"Germany","v":6.4},{"c":"Hungary","v":6.0},{"c":"Spain","v":6.0},{"c":"France","v":5.7},{"c":"Bulgaria","v":5.6},{"c":"Greece","v":5.4},{"c":"Poland","v":4.8},{"c":"Czechia","v":4.8},{"c":"Slovakia","v":4.5},{"c":"Ireland","v":2.8},{"c":"Netherlands","v":2.4},{"c":"Belgium","v":2.0},{"c":"Cyprus","v":1.9},{"c":"United Kingdom","v":1.8},{"c":"Luxembourg","v":1.6},{"c":"Ukraine","v":1.4},{"c":"Malta","v":0.0}],"2007":[{"c":"Iceland","v":77.3},{"c":"Norway","v":45.3},{"c":"Sweden","v":28.8},{"c":"Latvia","v":27.8},{"c":"Austria","v":24.3},{"c":"Montenegro","v":23.0},{"c":"Finland","v":22.9},{"c":"Albania","v":22.4},{"c":"Portugal","v":16.8},{"c":"Croatia","v":15.2},{"c":"Denmark","v":15.1},{"c":"Slovenia","v":13.0},{"c":"Romania","v":11.9},{"c":"Lithuania","v":9.9},{"c":"Serbia","v":9.7},{"c":"North Macedonia","v":9.3},{"c":"Estonia","v":9.1},{"c":"Italy","v":8.9},{"c":"Germany","v":7.7},{"c":"Hungary","v":6.8},{"c":"Spain","v":6.4},{"c":"France","v":6.2},{"c":"Slovakia","v":5.3},{"c":"Greece","v":5.1},{"c":"Czechia","v":5.0},{"c":"Poland","v":5.0},{"c":"Bulgaria","v":4.8},{"c":"Ireland","v":3.0},{"c":"Luxembourg","v":2.8},{"c":"Netherlands","v":2.5},{"c":"Cyprus","v":2.4},{"c":"Belgium","v":2.4},{"c":"United Kingdom","v":2.0},{"c":"Ukraine","v":1.7},{"c":"Malta","v":0.0}],"2008":[{"c":"Iceland","v":78.6},{"c":"Norway","v":43.2},{"c":"Sweden","v":29.8},{"c":"Latvia","v":28.1},{"c":"Albania","v":25.6},{"c":"Austria","v":25.1},{"c":"Finland","v":25.0},{"c":"Montenegro","v":23.1},{"c":"Portugal","v":16.6},{"c":"Croatia","v":16.5},{"c":"Denmark","v":15.7},{"c":"Slovenia","v":13.6},{"c":"Romania","v":13.5},{"c":"Estonia","v":11.1},{"c":"Italy","v":10.5},{"c":"Lithuania","v":10.5},{"c":"Serbia","v":9.7},{"c":"North Macedonia","v":9.0},{"c":"Germany","v":8.0},{"c":"Hungary","v":7.3},{"c":"France","v":7.1},{"c":"Spain","v":7.0},{"c":"Poland","v":5.6},{"c":"Czechia","v":5.6},{"c":"Bulgaria","v":5.4},{"c":"Slovakia","v":5.1},{"c":"Greece","v":5.1},{"c":"Ireland","v":3.7},{"c":"Cyprus","v":3.1},{"c":"Netherlands","v":3.0},{"c":"Luxembourg","v":2.9},{"c":"Belgium","v":2.8},{"c":"United Kingdom","v":2.6},{"c":"Ukraine","v":2.0},{"c":"Malta","v":0.0}],"2009":[{"c":"Iceland","v":80.3},{"c":"Norway","v":40.3},{"c":"Montenegro","v":35.0},{"c":"Sweden","v":33.2},{"c":"Latvia","v":32.8},{"c":"Albania","v":30.6},{"c":"Austria","v":28.0},{"c":"Finland","v":23.6},{"c":"Croatia","v":19.2},{"c":"Portugal","v":18.7},{"c":"Denmark","v":16.9},{"c":"Slovenia","v":15.7},{"c":"Estonia","v":15.5},{"c":"Romania","v":15.1},{"c":"Serbia","v":12.9},{"c":"Italy","v":12.0},{"c":"Lithuania","v":11.7},{"c":"North Macedonia","v":11.2},{"c":"Hungary","v":9.8},{"c":"Spain","v":9.0},{"c":"Germany","v":8.5},{"c":"France","v":7.5},{"c":"Slovakia","v":6.8},{"c":"Czechia","v":6.7},{"c":"Poland","v":6.6},{"c":"Bulgaria","v":6.4},{"c":"Greece","v":5.8},{"c":"Ireland","v":4.5},{"c":"Belgium","v":3.6},{"c":"Netherlands","v":3.5},{"c":"Cyprus","v":3.5},{"c":"United Kingdom","v":3.2},{"c":"Luxembourg","v":2.9},{"c":"Ukraine","v":2.2},{"c":"Malta","v":0.0}],"2010":[{"c":"Iceland","v":85.5},{"c":"Albania","v":40.1},{"c":"Norway","v":36.6},{"c":"Montenegro","v":35.2},{"c":"Sweden","v":32.0},{"c":"Latvia","v":29.4},{"c":"Austria","v":27.2},{"c":"Finland","v":25.1},{"c":"Portugal","v":22.0},{"c":"Croatia","v":21.9},{"c":"Moldova","v":20.4},{"c":"Denmark","v":19.0},{"c":"Romania","v":16.7},{"c":"Slovenia","v":16.0},{"c":"Lithuania","v":14.7},{"c":"North Macedonia","v":14.4},{"c":"Estonia","v":13.9},{"c":"Serbia","v":13.2},{"c":"Italy","v":12.2},{"c":"Slovakia","v":11.1},{"c":"Spain","v":10.9},{"c":"Hungary","v":10.4},{"c":"Germany","v":9.2},{"c":"Bulgaria","v":8.2},{"c":"France","v":8.2},{"c":"Poland","v":7.2},{"c":"Greece","v":7.1},{"c":"Czechia","v":7.0},{"c":"Ireland","v":4.5},{"c":"Belgium","v":4.4},{"c":"Cyprus","v":3.7},{"c":"United Kingdom","v":3.4},{"c":"Netherlands","v":3.3},{"c":"Luxembourg","v":2.8},{"c":"Ukraine","v":2.1},{"c":"Malta","v":0.2}],"2011":[{"c":"Iceland","v":86.7},{"c":"Norway","v":43.1},{"c":"Sweden","v":33.5},{"c":"Latvia","v":30.9},{"c":"Austria","v":26.8},{"c":"Albania","v":25.6},{"c":"Finland","v":25.5},{"c":"Montenegro","v":24.5},{"c":"Moldova","v":21.1},{"c":"Portugal","v":21.1},{"c":"Denmark","v":21.0},{"c":"Croatia","v":18.5},{"c":"Slovenia","v":14.8},{"c":"Romania","v":14.2},{"c":"Lithuania","v":14.1},{"c":"Estonia","v":14.0},{"c":"Italy","v":12.1},{"c":"Hungary","v":11.1},{"c":"North Macedonia","v":11.0},{"c":"Slovakia","v":11.0},{"c":"Serbia","v":10.9},{"c":"Spain","v":10.7},{"c":"Germany","v":10.0},{"c":"Czechia","v":8.0},{"c":"Poland","v":7.8},{"c":"France","v":7.3},{"c":"Greece","v":7.3},{"c":"Bulgaria","v":7.2},{"c":"Ireland","v":5.9},{"c":"Belgium","v":4.7},{"c":"Cyprus","v":4.3},{"c":"United Kingdom","v":4.1},{"c":"Netherlands","v":3.7},{"c":"Luxembourg","v":2.8},{"c":"Ukraine","v":2.1},{"c":"Malta","v":0.4}],"2012":[{"c":"Iceland","v":86.5},{"c":"Norway","v":46.5},{"c":"Sweden","v":37.8},{"c":"Latvia","v":34.6},{"c":"Albania","v":30.9},{"c":"Austria","v":30.5},{"c":"Finland","v":29.0},{"c":"Montenegro","v":28.3},{"c":"Denmark","v":23.0},{"c":"Moldova","v":22.8},{"c":"Croatia","v":20.2},{"c":"Portugal","v":19.0},{"c":"Slovenia","v":15.8},{"c":"Lithuania","v":15.4},{"c":"Estonia","v":15.2},{"c":"Romania","v":14.8},{"c":"Italy","v":14.3},{"c":"Serbia","v":12.6},{"c":"Slovakia","v":12.2},{"c":"Hungary","v":11.9},{"c":"Spain","v":11.7},{"c":"Germany","v":11.2},{"c":"North Macedonia","v":10.9},{"c":"Bulgaria","v":8.9},{"c":"Poland","v":8.9},{"c":"Czechia","v":8.7},{"c":"France","v":8.6},{"c":"Greece","v":8.5},{"c":"Ireland","v":5.8},{"c":"Belgium","v":5.6},{"c":"Cyprus","v":5.0},{"c":"United Kingdom","v":4.3},{"c":"Netherlands","v":3.8},{"c":"Luxembourg","v":3.1},{"c":"Ukraine","v":2.2},{"c":"Malta","v":0.5}],"2013":[{"c":"Iceland","v":86.8},{"c":"Norway","v":40.7},{"c":"Montenegro","v":38.5},{"c":"Sweden","v":35.7},{"c":"Latvia","v":34.2},{"c":"Albania","v":34.0},{"c":"Austria","v":30.0},{"c":"Finland","v":29.2},{"c":"Georgia","v":28.4},{"c":"Croatia","v":24.5},{"c":"Denmark","v":23.6},{"c":"Portugal","v":23.0},{"c":"Moldova","v":23.0},{"c":"Slovenia","v":17.8},{"c":"Romania","v":17.4},{"c":"Lithuania","v":17.1},{"c":"Italy","v":16.4},{"c":"Spain","v":13.8},{"c":"Estonia","v":13.5},{"c":"North Macedonia","v":13.2},{"c":"Hungary","v":13.0},{"c":"Serbia","v":12.9},{"c":"Slovakia","v":12.1},{"c":"Germany","v":11.3},{"c":"Bulgaria","v":11.0},{"c":"Greece","v":10.2},{"c":"France","v":9.6},{"c":"Czechia","v":9.5},{"c":"Poland","v":8.8},{"c":"Ireland","v":6.6},{"c":"Belgium","v":5.8},{"c":"Cyprus","v":5.7},{"c":"United Kingdom","v":5.4},{"c":"Netherlands","v":3.8},{"c":"Luxembourg","v":3.6},{"c":"Ukraine","v":2.7},{"c":"Malta","v":0.6}],"2014":[{"c":"Iceland","v":86.0},{"c":"Norway","v":45.9},{"c":"Sweden","v":36.3},{"c":"Latvia","v":34.4},{"c":"Montenegro","v":32.3},{"c":"Austria","v":30.6},{"c":"Finland","v":29.8},{"c":"Albania","v":26.8},{"c":"Georgia","v":26.5},{"c":"Portugal","v":26.2},{"c":"Denmark","v":25.8},{"c":"Croatia","v":24.7},{"c":"Moldova","v":24.6},{"c":"Romania","v":19.3},{"c":"Slovenia","v":19.0},{"c":"Lithuania","v":18.1},{"c":"Italy","v":17.5},{"c":"Bosnia and Herzegovina","v":16.0},{"c":"Serbia","v":15.0},{"c":"Estonia","v":14.5},{"c":"Spain","v":14.3},{"c":"North Macedonia","v":13.0},{"c":"Hungary","v":12.0},{"c":"Germany","v":11.7},{"c":"Slovakia","v":11.1},{"c":"Bulgaria","v":10.4},{"c":"Czechia","v":10.2},{"c":"Greece","v":9.7},{"c":"France","v":9.2},{"c":"Poland","v":9.2},{"c":"Ireland","v":7.5},{"c":"United Kingdom","v":6.6},{"c":"Belgium","v":5.9},{"c":"Cyprus","v":5.5},{"c":"Luxembourg","v":4.5},{"c":"Netherlands","v":4.0},{"c":"Ukraine","v":2.6},{"c":"Malta","v":0.9}],"2015":[{"c":"Iceland","v":84.2},{"c":"Norway","v":52.2},{"c":"Sweden","v":41.9},{"c":"Albania","v":34.0},{"c":"Latvia","v":33.2},{"c":"Finland","v":31.8},{"c":"Austria","v":29.8},{"c":"Montenegro","v":29.2},{"c":"Denmark","v":27.5},{"c":"Moldova","v":25.2},{"c":"Georgia","v":24.0},{"c":"Croatia","v":23.2},{"c":"Portugal","v":23.0},{"c":"Lithuania","v":19.5},{"c":"Romania","v":18.7},{"c":"Estonia","v":18.2},{"c":"Slovenia","v":17.0},{"c":"Bosnia and Herzegovina","v":16.8},{"c":"Italy","v":16.7},{"c":"North Macedonia","v":15.6},{"c":"Spain","v":13.0},{"c":"Serbia","v":13.0},{"c":"Slovakia","v":12.8},{"c":"Germany","v":12.5},{"c":"Hungary","v":12.0},{"c":"Bulgaria","v":11.1},{"c":"Greece","v":11.0},{"c":"Czechia","v":10.4},{"c":"Poland","v":9.5},{"c":"France","v":9.4},{"c":"United Kingdom","v":8.2},{"c":"Ireland","v":8.0},{"c":"Belgium","v":6.3},{"c":"Cyprus","v":6.1},{"c":"Luxembourg","v":5.0},{"c":"Netherlands","v":4.2},{"c":"Ukraine","v":2.9},{"c":"Malta","v":0.9}],"2016":[{"c":"Iceland","v":81.5},{"c":"Norway","v":49.2},{"c":"Albania","v":41.3},{"c":"Sweden","v":38.7},{"c":"Latvia","v":34.5},{"c":"Montenegro","v":32.9},{"c":"Finland","v":31.1},{"c":"Austria","v":30.2},{"c":"Denmark","v":28.1},{"c":"Moldova","v":25.9},{"c":"Portugal","v":25.7},{"c":"Georgia","v":24.6},{"c":"Croatia","v":23.5},{"c":"Lithuania","v":19.5},{"c":"Romania","v":19.5},{"c":"Slovenia","v":17.2},{"c":"Italy","v":16.6},{"c":"Estonia","v":15.9},{"c":"Bosnia and Herzegovina","v":15.6},{"c":"North Macedonia","v":14.3},{"c":"Spain","v":13.3},{"c":"Slovakia","v":13.1},{"c":"Serbia","v":12.9},{"c":"Germany","v":12.3},{"c":"Hungary","v":11.8},{"c":"Bulgaria","v":11.0},{"c":"Greece","v":10.7},{"c":"Czechia","v":10.6},{"c":"France","v":10.4},{"c":"Poland","v":8.8},{"c":"United Kingdom","v":8.6},{"c":"Ireland","v":7.6},{"c":"Belgium","v":6.3},{"c":"Cyprus","v":5.9},{"c":"Luxembourg","v":5.3},{"c":"Netherlands","v":4.3},{"c":"Ukraine","v":3.9},{"c":"Malta","v":1.0}],"2017":[{"c":"Iceland","v":81.9},{"c":"Norway","v":47.8},{"c":"Latvia","v":40.2},{"c":"Sweden","v":40.0},{"c":"Finland","v":34.0},{"c":"Denmark","v":31.2},{"c":"Austria","v":29.8},{"c":"Moldova","v":26.9},{"c":"Albania","v":26.8},{"c":"Montenegro","v":25.1},{"c":"Georgia","v":23.7},{"c":"Croatia","v":21.5},{"c":"Portugal","v":21.5},{"c":"Lithuania","v":20.0},{"c":"Romania","v":18.0},{"c":"Italy","v":17.8},{"c":"Estonia","v":17.3},{"c":"Slovenia","v":15.8},{"c":"Germany","v":13.1},{"c":"North Macedonia","v":12.9},{"c":"Slovakia","v":12.5},{"c":"Spain","v":12.1},{"c":"Serbia","v":12.0},{"c":"Bosnia and Herzegovina","v":11.7},{"c":"Hungary","v":11.2},{"c":"Greece","v":11.0},{"c":"Czechia","v":10.4},{"c":"Bulgaria","v":10.3},{"c":"France","v":10.3},{"c":"United Kingdom","v":9.6},{"c":"Ireland","v":9.0},{"c":"Poland","v":8.6},{"c":"Belgium","v":6.5},{"c":"Cyprus","v":6.3},{"c":"Luxembourg","v":6.1},{"c":"Netherlands","v":4.6},{"c":"Ukraine","v":4.4},{"c":"Malta","v":1.3}],"2018":[{"c":"Iceland","v":82.1},{"c":"Norway","v":47.0},{"c":"Albania","v":42.5},{"c":"Latvia","v":38.5},{"c":"Sweden","v":38.2},{"c":"Finland","v":34.2},{"c":"Montenegro","v":32.1},{"c":"Denmark","v":30.8},{"c":"Austria","v":29.4},{"c":"Moldova","v":25.9},{"c":"Croatia","v":25.1},{"c":"Portugal","v":24.6},{"c":"Bosnia and Herzegovina","v":23.5},{"c":"Georgia","v":23.3},{"c":"Lithuania","v":19.8},{"c":"Estonia","v":19.2},{"c":"Italy","v":18.3},{"c":"Romania","v":18.0},{"c":"Slovenia","v":16.5},{"c":"North Macedonia","v":14.7},{"c":"Germany","v":13.7},{"c":"Bulgaria","v":13.4},{"c":"Spain","v":13.2},{"c":"Serbia","v":13.0},{"c":"Greece","v":12.1},{"c":"Slovakia","v":11.8},{"c":"Poland","v":11.1},{"c":"France","v":11.1},{"c":"United Kingdom","v":10.7},{"c":"Hungary","v":10.5},{"c":"Czechia","v":10.5},{"c":"Ireland","v":9.9},{"c":"Cyprus","v":8.2},{"c":"Belgium","v":6.6},{"c":"Luxembourg","v":6.6},{"c":"Netherlands","v":5.2},{"c":"Ukraine","v":4.6},{"c":"Malta","v":1.5}],"2019":[{"c":"Iceland","v":83.5},{"c":"Norway","v":46.5},{"c":"Sweden","v":41.3},{"c":"Latvia","v":36.8},{"c":"Finland","v":35.4},{"c":"Denmark","v":33.1},{"c":"Albania","v":31.0},{"c":"Austria","v":30.0},{"c":"Montenegro","v":28.1},{"c":"Bosnia and Herzegovina","v":24.8},{"c":"Portugal","v":24.4},{"c":"Croatia","v":24.2},{"c":"Moldova","v":23.2},{"c":"Estonia","v":23.1},{"c":"Georgia","v":20.0},{"c":"Lithuania","v":19.9},{"c":"Italy","v":18.7},{"c":"Romania","v":18.1},{"c":"Slovenia","v":16.8},{"c":"Germany","v":14.6},{"c":"Spain","v":13.7},{"c":"Serbia","v":13.2},{"c":"Bulgaria","v":13.2},{"c":"Slovakia","v":12.9},{"c":"Greece","v":12.2},{"c":"Poland","v":11.9},{"c":"United Kingdom","v":11.9},{"c":"North Macedonia","v":11.8},{"c":"France","v":11.4},{"c":"Czechia","v":11.4},{"c":"Ireland","v":10.9},{"c":"Hungary","v":10.6},{"c":"Cyprus","v":8.5},{"c":"Luxembourg","v":7.1},{"c":"Belgium","v":6.8},{"c":"Netherlands","v":6.3},{"c":"Ukraine","v":4.9},{"c":"Malta","v":1.5}],"2020":[{"c":"Iceland","v":87.9},{"c":"Norway","v":52.7},{"c":"Sweden","v":47.7},{"c":"Latvia","v":39.6},{"c":"Denmark","v":37.4},{"c":"Finland","v":37.0},{"c":"Albania","v":33.1},{"c":"Austria","v":32.6},{"c":"Montenegro","v":29.4},{"c":"Portugal","v":28.8},{"c":"Estonia","v":27.5},{"c":"Croatia","v":26.3},{"c":"Bosnia and Herzegovina","v":24.4},{"c":"Moldova","v":22.7},{"c":"Lithuania","v":21.2},{"c":"Italy","v":20.4},{"c":"Georgia","v":19.3},{"c":"Romania","v":18.6},{"c":"Slovenia","v":18.5},{"c":"Germany","v":16.4},{"c":"Spain","v":16.2},{"c":"Serbia","v":15.6},{"c":"Greece","v":15.2},{"c":"Bulgaria","v":14.3},{"c":"North Macedonia","v":13.8},{"c":"Slovakia","v":13.1},{"c":"Ireland","v":13.0},{"c":"France","v":12.9},{"c":"Czechia","v":12.7},{"c":"Poland","v":12.5},{"c":"Hungary","v":11.3},{"c":"Cyprus","v":10.9},{"c":"Luxembourg","v":10.1},{"c":"Belgium","v":8.5},{"c":"Netherlands","v":8.4},{"c":"Ukraine","v":5.6},{"c":"Malta","v":1.9}],"2021":[{"c":"Iceland","v":85.9},{"c":"Norway","v":54.2},{"c":"Sweden","v":48.2},{"c":"Albania","v":44.9},{"c":"Denmark","v":40.4},{"c":"Finland","v":40.3},{"c":"Latvia","v":39.8},{"c":"Montenegro","v":32.7},{"c":"Austria","v":31.5},{"c":"Portugal","v":29.9},{"c":"Croatia","v":28.8},{"c":"Estonia","v":26.9},{"c":"Bosnia and Herzegovina","v":25.5},{"c":"Lithuania","v":23.0},{"c":"Moldova","v":21.8},{"c":"Georgia","v":21.1},{"c":"Italy","v":19.3},{"c":"Slovenia","v":19.0},{"c":"Romania","v":18.6},{"c":"Serbia","v":17.0},{"c":"Greece","v":16.5},{"c":"Spain","v":15.9},{"c":"Germany","v":15.8},{"c":"Bulgaria","v":15.1},{"c":"North Macedonia","v":14.0},{"c":"Slovakia","v":13.1},{"c":"France","v":12.9},{"c":"Czechia","v":12.8},{"c":"Poland","v":11.9},{"c":"Hungary","v":11.8},{"c":"Ireland","v":11.4},{"c":"Cyprus","v":11.2},{"c":"Luxembourg","v":9.7},{"c":"Netherlands","v":9.5},{"c":"Belgium","v":8.0},{"c":"Malta","v":2.1}],"2022":[{"c":"Iceland","v":83.2},{"c":"Norway","v":54.7},{"c":"Sweden","v":49.7},{"c":"Latvia","v":42.7},{"c":"Albania","v":40.0},{"c":"Denmark","v":40.0},{"c":"Finland","v":39.3},{"c":"Austria","v":32.2},{"c":"Montenegro","v":28.5},{"c":"Portugal","v":28.0},{"c":"Croatia","v":26.1},{"c":"Estonia","v":25.6},{"c":"Bosnia and Herzegovina","v":24.7},{"c":"Lithuania","v":24.6},{"c":"Moldova","v":21.2},{"c":"Georgia","v":19.8},{"c":"Romania","v":19.0},{"c":"Italy","v":18.4},{"c":"Germany","v":17.3},{"c":"Slovenia","v":16.5},{"c":"Greece","v":15.4},{"c":"Spain","v":15.4},{"c":"Serbia","v":15.3},{"c":"Bulgaria","v":14.0},{"c":"France","v":13.8},{"c":"North Macedonia","v":13.2},{"c":"Slovakia","v":13.0},{"c":"Czechia","v":12.9},{"c":"Hungary","v":12.9},{"c":"Poland","v":12.8},{"c":"Ireland","v":12.5},{"c":"Netherlands","v":11.4},{"c":"Cyprus","v":10.7},{"c":"Luxembourg","v":10.4},{"c":"Belgium","v":8.9},{"c":"Malta","v":2.1}],"2023":[{"c":"Iceland","v":83.3},{"c":"Norway","v":55.2},{"c":"Sweden","v":50.2},{"c":"Albania","v":48.2},{"c":"Latvia","v":44.7},{"c":"Denmark","v":41.8},{"c":"Finland","v":39.8},{"c":"Austria","v":36.4},{"c":"Montenegro","v":33.7},{"c":"Portugal","v":31.4},{"c":"Estonia","v":31.2},{"c":"Bosnia and Herzegovina","v":27.8},{"c":"Croatia","v":27.3},{"c":"Lithuania","v":26.9},{"c":"Moldova","v":22.6},{"c":"Slovenia","v":20.5},{"c":"Romania","v":20.4},{"c":"Georgia","v":20.1},{"c":"Italy","v":19.6},{"c":"Germany","v":19.1},{"c":"Spain","v":18.1},{"c":"Serbia","v":17.9},{"c":"Greece","v":17.4},{"c":"North Macedonia","v":15.6},{"c":"France","v":15.0},{"c":"Bulgaria","v":14.9},{"c":"Poland","v":14.3},{"c":"Hungary","v":13.7},{"c":"Ireland","v":13.7},{"c":"Czechia","v":13.6},{"c":"Slovakia","v":12.5},{"c":"Netherlands","v":12.4},{"c":"Luxembourg","v":11.1},{"c":"Cyprus","v":11.1},{"c":"Belgium","v":9.9},{"c":"Malta","v":2.2}],"2024":[{"c":"Iceland","v":83.6},{"c":"Norway","v":56.7},{"c":"Sweden","v":48.4},{"c":"Albania","v":45.9},{"c":"Latvia","v":45.7},{"c":"Denmark","v":42.6},{"c":"Finland","v":41.3},{"c":"Austria","v":39.1},{"c":"Estonia","v":35.9},{"c":"Portugal","v":34.2},{"c":"Montenegro","v":31.9},{"c":"Lithuania","v":29.8},{"c":"Croatia","v":26.4},{"c":"Bosnia and Herzegovina","v":25.8},{"c":"Italy","v":20.9},{"c":"Moldova","v":20.9},{"c":"Slovenia","v":20.4},{"c":"Germany","v":19.8},{"c":"Georgia","v":19.6},{"c":"Romania","v":19.4},{"c":"Spain","v":18.7},{"c":"Greece","v":18.5},{"c":"Serbia","v":17.1},{"c":"North Macedonia","v":17.0},{"c":"France","v":16.3},{"c":"Bulgaria","v":15.1},{"c":"Poland","v":15.0},{"c":"Hungary","v":14.8},{"c":"Czechia","v":14.3},{"c":"Ireland","v":14.2},{"c":"Netherlands","v":13.1},{"c":"Slovakia","v":13.0},{"c":"Luxembourg","v":12.6},{"c":"Cyprus","v":11.4},{"c":"Belgium","v":9.5},{"c":"Malta","v":2.4}]};
+
+const COLORS = {"Iceland": "#2ecc71", "Norway": "#27ae60", "Sweden": "#1abc9c", "Latvia": "#16a085", "Finland": "#3498db", "Denmark": "#2980b9", "Austria": "#9b59b6", "Albania": "#8e44ad", "Portugal": "#e74c3c", "Lithuania": "#c0392b", "Croatia": "#e67e22", "Romania": "#d35400", "Montenegro": "#f39c12", "Estonia": "#f1c40f", "Bosnia and Herzegovina": "#95a5a6", "France": "#2c3e50", "Slovakia": "#7f8c8d", "Slovenia": "#bdc3c7", "Spain": "#e8daef", "Bulgaria": "#fadbd8", "Moldova": "#fdebd0", "Georgia": "#d5f5e3", "Germany": "#d6eaf8", "Italy": "#fdfefe", "Greece": "#f9ebea", "Hungary": "#eaf2ff", "United Kingdom": "#4a235a", "Czechia": "#1a5276", "Serbia": "#117a65", "Poland": "#7d6608", "Ukraine": "#6e2f1a", "Netherlands": "#0e6655", "Ireland": "#1d8348", "Belgium": "#7b241c", "Cyprus": "#6c3483", "Malta": "#922b21", "North Macedonia": "#1f618d", "Luxembourg": "#154360"};
+
+const DEFAULT_COLOR = '#4a90d9';
+const TOP_N = 15;
+const years = Object.keys(DATA).map(Number).sort((a,b)=>a-b);
+let currentIdx = 0;
+let playing = false;
+let timer = null;
+
+const chart       = document.getElementById('chart');
+const yearDisplay = document.getElementById('yearDisplay');
+const yearPill    = document.getElementById('yearPill');
+const progressFill= document.getElementById('progressFill');
+const playBtn     = document.getElementById('playBtn');
+const resetBtn    = document.getElementById('resetBtn');
+const speedSlider = document.getElementById('speedSlider');
+
+// pre-build row elements
+const rows = [];
+for (let i = 0; i < TOP_N; i++) {
+  const row = document.createElement('div');
+  row.className = 'bar-row';
+  row.innerHTML = `
+    <div class="rank">${i+1}</div>
+    <div class="country-name"></div>
+    <div class="bar-container">
+      <div class="bar-fill">
+        <span class="bar-value"></span>
+      </div>
+    </div>`;
+  chart.appendChild(row);
+  rows.push(row);
+}
+
+function getSpeed() {
+  const s = parseInt(speedSlider.value);
+  return [1200, 900, 600, 400, 200][s - 1];
+}
+
+function render(idx) {
+  const year = years[idx];
+  const entries = DATA[year].slice(0, TOP_N);
+  const maxVal = entries[0].v;
+
+  yearDisplay.textContent = year;
+  yearPill.textContent = year;
+  progressFill.style.width = ((idx / (years.length - 1)) * 100) + '%';
+
+  entries.forEach((entry, i) => {
+    const row = rows[i];
+    const namEl  = row.querySelector('.country-name');
+    const barEl  = row.querySelector('.bar-fill');
+    const valEl  = row.querySelector('.bar-value');
+
+    namEl.textContent = entry.c;
+    valEl.textContent = entry.v + '%';
+    barEl.style.width = ((entry.v / maxVal) * 100) + '%';
+    barEl.style.background = COLORS[entry.c] || DEFAULT_COLOR;
+  });
+}
+
+function play() {
+  if (currentIdx >= years.length - 1) currentIdx = 0;
+  playing = true;
+  playBtn.textContent = '⏸ Pause';
+
+  function step() {
+    render(currentIdx);
+    if (currentIdx < years.length - 1) {
+      currentIdx++;
+      timer = setTimeout(step, getSpeed());
+    } else {
+      playing = false;
+      playBtn.textContent = '▶ Play';
+    }
+  }
+  step();
+}
+
+function pause() {
+  playing = false;
+  clearTimeout(timer);
+  playBtn.textContent = '▶ Play';
+}
+
+playBtn.addEventListener('click', () => {
+  if (playing) pause(); else play();
+});
+
+resetBtn.addEventListener('click', () => {
+  pause();
+  currentIdx = 0;
+  render(0);
+});
+
+// initial render
+render(0);
+</script>
+</body>
+</html>
