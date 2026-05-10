@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CO₂ Country Explorer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      padding: 30px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 32px;
+      max-width: 620px;
+      width: 100%;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      color: #1a1a2e;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 24px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 160px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    select {
+      padding: 10px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: #1a1a2e;
+      background: #fafafa;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #4a90d9;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat {
+      background: #f8fafd;
+      border-radius: 12px;
+      padding: 18px 14px;
+      text-align: center;
+      border: 1.5px solid #e8edf5;
+      transition: transform 0.2s;
+    }
+
+    .stat:hover { transform: translateY(-2px); }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .stat.co2 .stat-value  { color: #e74c3c; }
+    .stat.ren .stat-value  { color: #27ae60; }
+    .stat.fos .stat-value  { color: #7f8c8d; }
+
+    /* bar chart */
+    .bar-section { margin-bottom: 20px; }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: #555;
+      margin-bottom: 5px;
+    }
+
+    .bar-track {
+      height: 12px;
+      background: #eee;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.6s ease;
+    }
+
+    .bar-fill.ren { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+    .bar-fill.fos { background: linear-gradient(90deg, #7f8c8d, #95a5a6); }
+
+    /* trend mini chart */
+    .trend-section { margin-top: 8px; }
+
+    .trend-title {
+      font-size: 0.82rem;
+      color: #555;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    canvas {
+      width: 100%;
+      height: 90px;
+      display: block;
+    }
+
+    .context {
+      font-size: 0.82rem;
+      color: #666;
+      background: #f0f4f8;
+      border-radius: 8px;
+      padding: 12px 14px;
+      line-height: 1.5;
+      margin-top: 16px;
+    }
+
+    .context strong { color: #1a1a2e; }
+
+    .no-data {
+      text-align: center;
+      color: #aaa;
+      font-size: 0.9rem;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h2>🌍 Country Energy & CO₂ Explorer</h2>
+  <p class="subtitle">Select a country and year to explore its energy profile and CO₂ emissions</p>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Country</label>
+      <select id="countrySelect"></select>
+    </div>
+    <div class="control-group">
+      <label>Year</label>
+      <select id="yearSelect"></select>
+    </div>
+  </div>
+
+  <div id="output">
+    <div class="results">
+      <div class="stat co2">
+        <div class="stat-value" id="co2Val">—</div>
+        <div class="stat-label">CO₂ per capita (t)</div>
+      </div>
+      <div class="stat ren">
+        <div class="stat-value" id="renVal">—</div>
+        <div class="stat-label">Renewable share</div>
+      </div>
+      <div class="stat fos">
+        <div class="stat-value" id="fosVal">—</div>
+        <div class="stat-label">Fossil share</div>
+      </div>
+    </div>
+
+    <div class="bar-section">
+      <div class="bar-label">
+        <span>🌿 Renewables</span>
+        <span id="renPct">—</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill ren" id="renBar" style="width:0%"></div></div>
+
+      <div class="bar-label">
+        <span>⛽ Fossils</span>
+        <span id="fosPct">—</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill fos" id="fosBar" style="width:0%"></div></div>
+    </div>
+
+    <div class="trend-section">
+      <div class="trend-title">CO₂ per capita trend (all available years)</div>
+      <canvas id="trendChart"></canvas>
+    </div>
+
+    <div class="context" id="contextBox"></div>
+  </div>
+</div>
+
+<script>
+// ── embedded data ─────────────────────────────────────────
+const RAW = {"Albania":{"1990":{"co2":1.684,"ren":22.7,"fos":76.6},"1991":{"co2":1.307,"ren":35.6,"fos":69.8},"1992":{"co2":0.767,"ren":47.2,"fos":56.1},"1993":{"co2":0.799,"ren":44.4,"fos":53.9},"1994":{"co2":0.981,"ren":38.0,"fos":60.4},"1995":{"co2":1.047,"ren":38.5,"fos":59.8},"1996":{"co2":1.163,"ren":34.3,"fos":63.5},"1997":{"co2":0.807,"ren":41.0,"fos":57.3},"1998":{"co2":1.207,"ren":34.8,"fos":63.4},"1999":{"co2":1.26,"ren":35.7,"fos":62.6},"2000":{"co2":1.351,"ren":36.6,"fos":61.6},"2001":{"co2":1.448,"ren":33.6,"fos":64.4},"2002":{"co2":1.466,"ren":34.0,"fos":64.0},"2003":{"co2":1.504,"ren":28.4,"fos":69.4},"2004":{"co2":1.425,"ren":31.7,"fos":66.3},"2005":{"co2":1.469,"ren":32.0,"fos":66.1},"2006":{"co2":1.427,"ren":35.1,"fos":63.4},"2007":{"co2":1.377,"ren":34.6,"fos":63.4},"2008":{"co2":1.497,"ren":38.9,"fos":59.6},"2009":{"co2":1.549,"ren":44.2,"fos":54.2},"2010":{"co2":1.635,"ren":40.6,"fos":57.5},"2011":{"co2":1.619,"ren":42.9,"fos":55.7},"2012":{"co2":1.571,"ren":43.5,"fos":55.0},"2013":{"co2":1.637,"ren":43.7,"fos":55.3},"2014":{"co2":1.691,"ren":44.1,"fos":55.0},"2015":{"co2":1.685,"ren":42.8,"fos":55.5},"2016":{"co2":1.744,"ren":43.3,"fos":55.2},"2017":{"co2":1.718,"ren":40.7,"fos":57.8},"2018":{"co2":1.749,"ren":40.5,"fos":57.7},"2019":{"co2":1.725,"ren":41.3,"fos":57.2},"2020":{"co2":1.568,"ren":44.7,"fos":54.0},"2021":{"co2":1.648,"ren":42.9,"fos":55.7},"2022":{"co2":1.629,"ren":43.8,"fos":55.0},"2023":{"co2":1.604,"ren":44.8,"fos":53.9},"2024":{"co2":1.592,"ren":45.9,"fos":52.8}},"Austria":{"1990":{"co2":7.75,"ren":23.0,"fos":72.3},"1991":{"co2":8.12,"ren":22.4,"fos":72.6},"1992":{"co2":7.74,"ren":24.1,"fos":71.0},"1993":{"co2":7.65,"ren":23.5,"fos":71.7},"1994":{"co2":7.73,"ren":23.5,"fos":72.0},"1995":{"co2":7.88,"ren":23.5,"fos":71.8},"1996":{"co2":8.04,"ren":22.1,"fos":73.2},"1997":{"co2":7.93,"ren":23.2,"fos":72.0},"1998":{"co2":8.01,"ren":23.8,"fos":71.4},"1999":{"co2":8.19,"ren":23.3,"fos":71.6},"2000":{"co2":8.04,"ren":24.0,"fos":70.7},"2001":{"co2":8.09,"ren":22.3,"fos":72.5},"2002":{"co2":8.16,"ren":24.4,"fos":70.3},"2003":{"co2":8.72,"ren":21.9,"fos":73.0},"2004":{"co2":8.68,"ren":23.6,"fos":71.4},"2005":{"co2":8.62,"ren":23.6,"fos":71.5},"2006":{"co2":8.64,"ren":25.2,"fos":69.7},"2007":{"co2":8.3,"ren":26.3,"fos":68.5},"2008":{"co2":8.24,"ren":28.3,"fos":66.5},"2009":{"co2":7.56,"ren":30.1,"fos":64.6},"2010":{"co2":8.1,"ren":28.9,"fos":66.1},"2011":{"co2":7.58,"ren":31.7,"fos":62.9},"2012":{"co2":7.38,"ren":32.5,"fos":62.2},"2013":{"co2":7.22,"ren":33.0,"fos":61.8},"2014":{"co2":6.75,"ren":34.2,"fos":60.5},"2015":{"co2":7.07,"ren":33.1,"fos":61.7},"2016":{"co2":7.07,"ren":33.4,"fos":61.5},"2017":{"co2":7.18,"ren":33.6,"fos":61.2},"2018":{"co2":7.04,"ren":34.5,"fos":60.3},"2019":{"co2":6.87,"ren":35.1,"fos":59.7},"2020":{"co2":6.16,"ren":37.6,"fos":57.3},"2021":{"co2":6.77,"ren":36.7,"fos":58.3},"2022":{"co2":6.53,"ren":37.8,"fos":57.2},"2023":{"co2":6.32,"ren":38.5,"fos":56.5},"2024":{"co2":6.18,"ren":39.1,"fos":60.7}},"Belgium":{"1990":{"co2":11.13,"ren":1.4,"fos":79.2},"1991":{"co2":11.69,"ren":1.4,"fos":79.1},"1992":{"co2":11.2,"ren":1.4,"fos":79.0},"1993":{"co2":11.11,"ren":1.5,"fos":79.6},"1994":{"co2":11.08,"ren":1.4,"fos":79.2},"1995":{"co2":11.53,"ren":1.5,"fos":79.2},"1996":{"co2":11.88,"ren":1.4,"fos":79.0},"1997":{"co2":11.22,"ren":1.5,"fos":78.6},"1998":{"co2":11.19,"ren":1.4,"fos":78.5},"1999":{"co2":10.93,"ren":1.5,"fos":77.9},"2000":{"co2":10.8,"ren":1.5,"fos":77.0},"2001":{"co2":11.17,"ren":1.6,"fos":77.6},"2002":{"co2":10.79,"ren":1.6,"fos":77.1},"2003":{"co2":11.11,"ren":1.7,"fos":77.7},"2004":{"co2":10.84,"ren":2.0,"fos":76.8},"2005":{"co2":10.65,"ren":2.3,"fos":75.4},"2006":{"co2":10.27,"ren":2.7,"fos":73.5},"2007":{"co2":10.25,"ren":3.1,"fos":72.1},"2008":{"co2":10.08,"ren":3.8,"fos":71.8},"2009":{"co2":9.41,"ren":5.2,"fos":71.4},"2010":{"co2":9.83,"ren":5.7,"fos":71.2},"2011":{"co2":9.05,"ren":6.8,"fos":68.3},"2012":{"co2":8.83,"ren":7.8,"fos":69.1},"2013":{"co2":8.78,"ren":8.6,"fos":68.3},"2014":{"co2":8.38,"ren":9.4,"fos":67.6},"2015":{"co2":8.49,"ren":9.8,"fos":68.2},"2016":{"co2":8.41,"ren":10.2,"fos":67.4},"2017":{"co2":8.33,"ren":10.5,"fos":68.8},"2018":{"co2":8.19,"ren":11.2,"fos":72.0},"2019":{"co2":7.97,"ren":11.5,"fos":71.7},"2020":{"co2":7.28,"ren":13.1,"fos":70.6},"2021":{"co2":7.88,"ren":13.2,"fos":71.7},"2022":{"co2":7.56,"ren":13.3,"fos":72.0},"2023":{"co2":7.46,"ren":10.8,"fos":73.3},"2024":{"co2":7.28,"ren":9.5,"fos":74.5}},"Germany":{"1990":{"co2":13.23,"ren":1.5,"fos":87.1},"1991":{"co2":12.66,"ren":1.4,"fos":87.4},"1992":{"co2":11.98,"ren":1.6,"fos":86.3},"1993":{"co2":11.77,"ren":1.6,"fos":86.4},"1994":{"co2":11.54,"ren":1.7,"fos":86.4},"1995":{"co2":11.46,"ren":1.7,"fos":86.2},"1996":{"co2":11.67,"ren":1.7,"fos":86.3},"1997":{"co2":11.31,"ren":2.0,"fos":85.1},"1998":{"co2":11.26,"ren":2.2,"fos":85.4},"1999":{"co2":10.96,"ren":2.3,"fos":84.4},"2000":{"co2":10.76,"ren":2.9,"fos":83.2},"2001":{"co2":11.08,"ren":2.9,"fos":83.8},"2002":{"co2":10.69,"ren":3.3,"fos":82.5},"2003":{"co2":10.93,"ren":3.6,"fos":82.7},"2004":{"co2":10.72,"ren":4.4,"fos":81.4},"2005":{"co2":10.31,"ren":5.4,"fos":79.6},"2006":{"co2":10.42,"ren":6.2,"fos":79.2},"2007":{"co2":10.09,"ren":7.7,"fos":76.9},"2008":{"co2":10.01,"ren":8.7,"fos":76.4},"2009":{"co2":9.48,"ren":9.5,"fos":75.2},"2010":{"co2":10.06,"ren":9.7,"fos":75.7},"2011":{"co2":9.56,"ren":11.3,"fos":74.2},"2012":{"co2":9.63,"ren":12.1,"fos":74.6},"2013":{"co2":9.71,"ren":12.5,"fos":75.0},"2014":{"co2":9.0,"ren":13.7,"fos":73.5},"2015":{"co2":9.06,"ren":14.3,"fos":73.3},"2016":{"co2":9.04,"ren":14.6,"fos":73.0},"2017":{"co2":8.96,"ren":15.3,"fos":72.7},"2018":{"co2":8.52,"ren":16.1,"fos":72.0},"2019":{"co2":7.87,"ren":17.2,"fos":70.5},"2020":{"co2":7.74,"ren":16.4,"fos":76.9},"2021":{"co2":8.09,"ren":17.0,"fos":74.8},"2022":{"co2":7.57,"ren":18.2,"fos":73.8},"2023":{"co2":7.07,"ren":19.1,"fos":77.5},"2024":{"co2":6.77,"ren":19.8,"fos":77.7}},"Sweden":{"1990":{"co2":6.98,"ren":24.6,"fos":38.5},"1995":{"co2":6.4,"ren":27.1,"fos":36.8},"2000":{"co2":6.13,"ren":31.2,"fos":34.1},"2005":{"co2":5.88,"ren":34.1,"fos":31.8},"2010":{"co2":5.16,"ren":38.9,"fos":27.9},"2015":{"co2":4.47,"ren":42.5,"fos":25.5},"2020":{"co2":3.53,"ren":47.8,"fos":21.5},"2024":{"co2":3.59,"ren":48.4,"fos":30.4}},"Poland":{"1990":{"co2":9.47,"ren":2.4,"fos":95.2},"1995":{"co2":9.03,"ren":2.7,"fos":93.5},"2000":{"co2":8.08,"ren":3.0,"fos":92.0},"2005":{"co2":8.23,"ren":4.1,"fos":90.5},"2010":{"co2":8.57,"ren":6.5,"fos":88.4},"2015":{"co2":8.04,"ren":9.8,"fos":85.1},"2020":{"co2":7.8,"ren":13.1,"fos">:82.4},"2024":{"co2":7.08,"ren":15.0,"fos":83.8}},"France":{"1990":{"co2":6.79,"ren":7.3,"fos":51.2},"1995":{"co2":6.39,"ren":7.7,"fos">:50.2},"2000":{"co2":6.59,"ren":7.0,"fos":50.8},"2005":{"co2":6.41,"ren":7.5,"fos":50.5},"2010":{"co2":5.66,"ren":9.6,"fos":48.7},"2015":{"co2":4.86,"ren":12.3,"fos":46.7},"2020":{"co2":4.05,"ren":14.8,"fos":45.3},"2024":{"co2":3.97,"ren":16.3,"fos":46.1}},"Norway":{"1990":{"co2":7.44,"ren":52.6,"fos":44.7},"1995":{"co2":7.59,"ren">:53.2,"fos":43.7},"2000":{"co2":8.26,"ren":51.8,"fos">:45.6},"2005":{"co2":8.69,"ren":54.1,"fos":42.5},"2010":{"co2":8.26,"ren":55.0,"fos":41.3},"2015":{"co2":7.85,"ren":55.8,"fos":41.0},"2020":{"co2":6.48,"ren":57.5,"fos":38.5},"2024":{"co2":6.67,"ren":56.7,"fos":47.4}},"Iceland":{"1990":{"co2":7.8,"ren":77.6,"fos":21.1},"2000":{"co2":7.94,"ren":80.5,"fos":18.5},"2010":{"co2":6.34,"ren":83.2,"fos":15.5},"2020":{"co2":9.19,"ren":84.1,"fos":14.9},"2024":{"co2":9.67,"ren":83.6,"fos":16.4}},"United Kingdom":{"1990":{"co2":10.17,"ren":0.5,"fos":90.9},"1995":{"co2":9.54,"ren":0.7,"fos":88.7},"2000":{"co2":9.39,"ren":0.9,"fos":87.6},"2005":{"co2":9.08,"ren":1.7,"fos":86.0},"2010":{"co2":7.99,"ren":3.7,"fos":83.1},"2015":{"co2":6.19,"ren":8.2,"fos">:77.1},"2020":{"co2":4.6,"ren":13.7,"fos":68.3},"2024":{"co2":4.2,"ren":15.2,"fos":71.0}}};
+
+// EU avg CO2 per capita by year (approximate)
+const EU_AVG = {1990:9.1,1995:8.5,2000:8.1,2005:7.9,2010:7.3,2015:6.5,2020:5.6,2024:5.4};
+
+const countrySelect = document.getElementById('countrySelect');
+const yearSelect    = document.getElementById('yearSelect');
+
+// populate dropdowns
+const countries = Object.keys(RAW).sort();
+countries.forEach(c => {
+  const opt = document.createElement('option');
+  opt.value = opt.textContent = c;
+  countrySelect.appendChild(opt);
+});
+
+// get all years across all countries
+const allYears = [...new Set(Object.values(RAW).flatMap(c => Object.keys(c).map(Number)))].sort();
+allYears.forEach(y => {
+  const opt = document.createElement('option');
+  opt.value = opt.textContent = y;
+  if (y === 2024) opt.selected = true;
+  yearSelect.appendChild(opt);
+});
+
+countrySelect.value = 'Germany';
+
+function update() {
+  const country = countrySelect.value;
+  const year    = parseInt(yearSelect.value);
+  const d       = RAW[country]?.[year];
+
+  if (!d) {
+    document.getElementById('co2Val').textContent = '—';
+    document.getElementById('renVal').textContent = '—';
+    document.getElementById('fosVal').textContent = '—';
+    document.getElementById('renBar').style.width = '0%';
+    document.getElementById('fosBar').style.width = '0%';
+    document.getElementById('contextBox').textContent = 'No data available for this country/year combination.';
+    return;
+  }
+
+  // stats
+  document.getElementById('co2Val').textContent = d.co2 + 't';
+  document.getElementById('renVal').textContent = d.ren + '%';
+  document.getElementById('fosVal').textContent = d.fos + '%';
+  document.getElementById('renPct').textContent = d.ren + '%';
+  document.getElementById('fosPct').textContent = d.fos + '%';
+  document.getElementById('renBar').style.width = Math.min(d.ren, 100) + '%';
+  document.getElementById('fosBar').style.width = Math.min(d.fos, 100) + '%';
+
+  // context text
+  const euAvg = EU_AVG[year] || EU_AVG[2024];
+  const diff  = (d.co2 - euAvg).toFixed(1);
+  const rel   = d.co2 < euAvg
+    ? `<strong>${Math.abs(diff)}t below</strong> the European average`
+    : `<strong>${diff}t above</strong> the European average`;
+  const renDesc = d.ren > 30 ? 'a renewable energy leader' :
+                  d.ren > 15 ? 'making progress on renewables' : 'still heavily fossil-dependent';
+
+  document.getElementById('contextBox').innerHTML =
+    `In ${year}, <strong>${country}</strong> emitted <strong>${d.co2} tonnes</strong> of CO₂ per person — ${rel} (≈${euAvg}t). ` +
+    `With ${d.ren}% of its energy from renewables, it is considered ${renDesc}.`;
+
+  // trend sparkline
+  drawTrend(country);
+}
+
+function drawTrend(country) {
+  const canvas = document.getElementById('trendChart');
+  const ctx    = canvas.getContext('2d');
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = canvas.parentElement.clientWidth;
+  const H      = 90;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const entries = Object.entries(RAW[country] || {})
+    .map(([y, v]) => ({ y: +y, v: v.co2 }))
+    .filter(e => e.v != null)
+    .sort((a, b) => a.y - b.y);
+
+  if (entries.length < 2) return;
+
+  const minY = Math.min(...entries.map(e => e.v));
+  const maxY = Math.max(...entries.map(e => e.v));
+  const pad  = { t: 10, b: 20, l: 36, r: 10 };
+  const gW   = W - pad.l - pad.r;
+  const gH   = H - pad.t - pad.b;
+
+  const xScale = i => pad.l + (i / (entries.length - 1)) * gW;
+  const yScale = v => pad.t + gH - ((v - minY) / (maxY - minY || 1)) * gH;
+
+  // gradient fill
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + gH);
+  grad.addColorStop(0, 'rgba(231,76,60,0.25)');
+  grad.addColorStop(1, 'rgba(231,76,60,0.0)');
+
+  ctx.beginPath();
+  ctx.moveTo(xScale(0), yScale(entries[0].v));
+  entries.forEach((e, i) => ctx.lineTo(xScale(i), yScale(e.v)));
+  ctx.lineTo(xScale(entries.length - 1), pad.t + gH);
+  ctx.lineTo(xScale(0), pad.t + gH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // line
+  ctx.beginPath();
+  ctx.moveTo(xScale(0), yScale(entries[0].v));
+  entries.forEach((e, i) => ctx.lineTo(xScale(i), yScale(e.v)));
+  ctx.strokeStyle = '#e74c3c';
+  ctx.lineWidth   = 2;
+  ctx.lineJoin    = 'round';
+  ctx.stroke();
+
+  // selected year dot
+  const selYear = parseInt(yearSelect.value);
+  const selIdx  = entries.findIndex(e => e.y === selYear);
+  if (selIdx >= 0) {
+    ctx.beginPath();
+    ctx.arc(xScale(selIdx), yScale(entries[selIdx].v), 5, 0, Math.PI * 2);
+    ctx.fillStyle   = '#e74c3c';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth   = 2;
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // y-axis labels
+  ctx.fillStyle  = '#999';
+  ctx.font       = '10px sans-serif';
+  ctx.textAlign  = 'right';
+  ctx.fillText(maxY.toFixed(1), pad.l - 4, pad.t + 4);
+  ctx.fillText(minY.toFixed(1), pad.l - 4, pad.t + gH);
+
+  // x-axis labels (first and last year)
+  ctx.textAlign = 'left';
+  ctx.fillText(entries[0].y, pad.l, H - 4);
+  ctx.textAlign = 'right';
+  ctx.fillText(entries[entries.length - 1].y, W - pad.r, H - 4);
+}
+
+countrySelect.addEventListener('change', update);
+yearSelect.addEventListener('change', update);
+window.addEventListener('resize', () => drawTrend(countrySelect.value));
+
+update();
+</script>
+</body>
+</html>
