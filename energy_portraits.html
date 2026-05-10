@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Energy Portraits of Europe</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  padding: 24px 16px 40px;
+}
+h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.subtitle {
+  font-size: 0.88rem;
+  color: #8b949e;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #8b949e;
+}
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.how-to-read {
+  font-size: 0.78rem;
+  color: #8b949e;
+  text-align: center;
+  margin-bottom: 28px;
+  font-style: italic;
+}
+
+/* grid of portraits */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.portrait-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.portrait-card:hover { transform: scale(1.06); }
+.portrait-card canvas {
+  width: 130px;
+  height: 130px;
+  display: block;
+}
+.country-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-top: 6px;
+  text-align: center;
+  color: #e6edf3;
+}
+.ren-label {
+  font-size: 0.7rem;
+  color: #2ecc71;
+  margin-top: 2px;
+}
+
+/* modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 480px;
+  width: 90%;
+  position: relative;
+}
+.modal-close {
+  position: absolute;
+  top: 12px; right: 16px;
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.modal-close:hover { color: #e6edf3; }
+.modal h3 { font-size: 1.2rem; margin-bottom: 4px; }
+.modal-canvas-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+.modal-canvas-wrap canvas {
+  width: 200px;
+  height: 200px;
+}
+.year-rows { width: 100%; }
+.year-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+}
+.year-tag {
+  width: 36px;
+  color: #8b949e;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.mini-bars { flex: 1; display: flex; height: 14px; border-radius: 4px; overflow: hidden; }
+.mini-bar { height: 100%; }
+.year-co2 { width: 50px; text-align: right; color: #e74c3c; font-size: 0.75rem; }
+.footnote {
+  font-size: 0.72rem;
+  color: #8b949e;
+  text-align: center;
+  margin-top: 32px;
+}
+</style>
+</head>
+<body>
+
+<h2>Energy Portraits of Europe</h2>
+<p class="subtitle">Each circle is a country. Each ring is a decade. Watch the colour shift from dark to green.</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>Renewables</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f39c12"></div>Nuclear</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#636363"></div>Coal</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2c5f8a"></div>Oil</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#9b59b6"></div>Gas</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4a4a4a"></div>Other</div>
+</div>
+<p class="how-to-read">Innermost ring = 1990 &nbsp;·&nbsp; Outermost ring = 2024 &nbsp;·&nbsp; Click any portrait for details</p>
+
+<div class="grid" id="grid"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <h3 id="modalTitle"></h3>
+    <p style="font-size:0.8rem;color:#8b949e;margin-bottom:4px">Energy mix by year</p>
+    <div class="modal-canvas-wrap">
+      <canvas id="modalCanvas" width="400" height="400"></canvas>
+    </div>
+    <div class="year-rows" id="yearRows"></div>
+  </div>
+</div>
+
+<p class="footnote">Data: Eurostat NRG_BAL_S + Our World in Data &nbsp;·&nbsp; Rings from inner to outer: 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2024</p>
+
+<script>
+const DATA = {"Albania":{"1990":{"ren":22.7,"nuc":0.0,"coal":23.6,"oil":45.4,"gas":7.6,"other":0.7,"co2":1.7},"1995":{"ren":50.9,"nuc":0.0,"coal":1.4,"oil":46.4,"gas":1.7,"other":0.0,"co2":0.6},"2000":{"ren":35.4,"nuc":0.0,"coal":0.9,"oil":58.5,"gas":0.5,"other":4.7,"co2":1.0},"2005":{"ren":30.8,"nuc":0.0,"coal":0.6,"oil":66.8,"gas":0.4,"other":1.4,"co2":1.4},"2010":{"ren":40.1,"nuc":0.0,"coal":5.2,"oil":58.0,"gas":0.5,"other":0.0,"co2":1.6},"2015":{"ren":34.0,"nuc":0.0,"coal":4.2,"oil":55.1,"gas":1.2,"other":5.4,"co2":1.6},"2020":{"ren":33.1,"nuc":0.0,"coal":6.8,"oil":49.4,"gas":1.9,"other":8.8,"co2":1.7},"2024":{"ren":45.9,"nuc":0.0,"coal":7.6,"oil":43.4,"gas":1.8,"other":1.3,"co2":1.6}},"Austria":{"1990":{"ren":19.9,"nuc":0.0,"coal":16.2,"oil":42.7,"gas":20.7,"other":0.6,"co2":8.1},"1995":{"ren":21.6,"nuc":0.0,"coal":12.7,"oil":42.1,"gas":23.6,"other":0.0,"co2":8.1},"2000":{"ren":22.5,"nuc":0.0,"coal":12.3,"oil":42.2,"gas":22.5,"other":0.5,"co2":8.3},"2005":{"ren":20.9,"nuc":0.0,"coal":11.8,"oil":42.0,"gas":23.5,"other":1.8,"co2":9.6},"2010":{"ren":27.2,"nuc":0.0,"coal":9.7,"oil":37.4,"gas":23.3,"other":2.4,"co2":8.6},"2015":{"ren":29.8,"nuc":0.0,"coal":9.6,"oil":35.6,"gas":20.5,"other":4.6,"co2":7.7},"2020":{"ren":32.6,"nuc":0.0,"coal":7.7,"oil":34.5,"gas":22.7,"other":2.6,"co2":7.0},"2024":{"ren":39.1,"nuc":0.0,"coal":7.4,"oil":35.0,"gas":18.4,"other":0.2,"co2":6.2}},"Belgium":{"1990":{"ren":0.9,"nuc":20.9,"coal":20.0,"oil":42.8,"gas":15.5,"other":0.0,"co2":12.1},"1995":{"ren":0.9,"nuc":18.4,"coal":14.9,"oil":46.2,"gas":18.3,"other":1.3,"co2":12.4},"2000":{"ren":1.0,"nuc":19.2,"coal":12.4,"oil":45.6,"gas":20.6,"other":1.3,"co2":12.4},"2005":{"ren":1.7,"nuc":18.3,"coal":7.7,"oil":48.2,"gas":22.1,"other":1.8,"co2":12.0},"2010":{"ren":4.4,"nuc":17.0,"coal":5.5,"oil":47.0,"gas":24.6,"other":1.4,"co2":10.5},"2015":{"ren":6.3,"nuc":10.6,"coal":5.8,"oil":49.2,"gas":23.5,"other":4.7,"co2":9.0},"2020":{"ren":8.5,"nuc":14.5,"coal":4.1,"oil":45.0,"gas":26.3,"other":1.6,"co2":7.9},"2024":{"ren":9.5,"nuc":13.2,"coal":4.6,"oil":48.8,"gas":21.1,"other":2.7,"co2":7.3}},"Bosnia and Herzegovina":{"2015":{"ren":16.8,"nuc":0.0,"coal":58.5,"oil":24.8,"gas":2.9,"other":0.0,"co2":5.2},"2020":{"ren":24.4,"nuc":0.0,"coal":56.4,"oil":21.7,"gas":2.4,"other":0.0,"co2":6.3},"2024":{"ren":25.8,"nuc":0.0,"coal":48.2,"oil":26.4,"gas":2.6,"other":0.0,"co2":6.1}},"Bulgaria":{"1990":{"ren":1.1,"nuc":13.4,"coal":30.9,"oil":34.3,"gas":19.1,"other":1.2,"co2":8.7},"1995":{"ren":1.7,"nuc":18.9,"coal":32.2,"oil":27.9,"gas":19.4,"other":0.0,"co2":6.9},"2000":{"ren":4.1,"nuc":25.2,"coal":34.3,"oil":22.7,"gas":15.7,"other":0.0,"co2":5.7},"2005":{"ren":5.5,"nuc":24.0,"coal":34.2,"oil":25.3,"gas":13.9,"other":0.0,"co2":6.6},"2010":{"ren":8.2,"nuc":21.4,"coal":38.5,"oil":22.8,"gas":12.8,"other":0.0,"co2":6.4},"2015":{"ren":11.1,"nuc":20.8,"coal":35.2,"oil":23.6,"gas":13.8,"other":0.0,"co2":6.7},"2020":{"ren":14.3,"nuc":24.4,"coal":23.4,"oil":24.7,"gas":14.1,"other":0.0,"co2":5.3},"2024":{"ren":15.1,"nuc":23.7,"coal":17.8,"oil":29.6,"gas":13.5,"other":0.4,"co2":4.7}},"Croatia":{"1990":{"ren":12.4,"nuc":0.0,"coal":8.4,"oil":50.3,"gas":22.7,"other":6.1,"co2":4.7},"1995":{"ren":20.1,"nuc":0.0,"coal":2.3,"oil":48.9,"gas":25.2,"other":3.5,"co2":3.6},"2000":{"ren":18.3,"nuc":0.0,"coal":5.1,"oil":47.1,"gas":26.0,"other":3.5,"co2":4.5},"2005":{"ren":18.9,"nuc":0.0,"coal":6.9,"oil":46.2,"gas":24.1,"other":3.9,"co2":5.4},"2010":{"ren":21.9,"nuc":0.0,"coal":7.2,"oil":39.4,"gas":27.8,"other":3.7,"co2":4.9},"2015":{"ren":23.2,"nuc":0.0,"coal":7.1,"oil":38.2,"gas":24.5,"other":7.0,"co2":4.3},"2020":{"ren":26.3,"nuc":0.0,"coal":4.3,"oil":33.7,"gas":30.3,"other":5.3,"co2":4.3},"2024":{"ren":26.4,"nuc":0.0,"coal":2.6,"oil":42.8,"gas":23.2,"other":5.1,"co2":4.8}},"Cyprus":{"1990":{"ren":0.4,"nuc":0.0,"coal":3.8,"oil":95.8,"gas":0.0,"other":0.0,"co2":5.9},"1995":{"ren":2.2,"nuc":0.0,"coal":0.6,"oil":97.2,"gas":0.0,"other":0.0,"co2":6.8},"2000":{"ren":1.7,"nuc":0.0,"coal":1.2,"oil":97.0,"gas":0.0,"other":0.0,"co2":7.5},"2005":{"ren":1.9,"nuc":0.0,"coal":1.3,"oil":96.7,"gas":0.0,"other":0.1,"co2":7.7},"2010":{"ren":3.7,"nuc":0.0,"coal":0.6,"oil":95.5,"gas":0.0,"other":0.2,"co2":7.2},"2015":{"ren":6.1,"nuc":0.0,"coal":0.1,"oil":93.2,"gas":0.0,"other":0.5,"co2":5.7},"2020":{"ren":10.9,"nuc":0.0,"coal":0.5,"oil":87.2,"gas":0.0,"other":1.4,"co2":5.3},"2024":{"ren":11.4,"nuc":0.0,"coal":0.4,"oil":86.3,"gas":0.0,"other":1.9,"co2":5.4}},"Czechia":{"1990":{"ren":2.3,"nuc":6.5,"coal":62.9,"oil":17.9,"gas":10.5,"other":0.0,"co2":15.9},"1995":{"ren":3.4,"nuc":7.5,"coal":54.2,"oil":19.1,"gas":15.6,"other":0.2,"co2":12.8},"2000":{"ren":3.9,"nuc":8.5,"coal":52.3,"oil":19.0,"gas":18.2,"other":0.0,"co2":12.4},"2005":{"ren":4.6,"nuc":14.2,"coal":44.4,"oil":21.9,"gas":16.9,"other":0.0,"co2":12.2},"2010":{"ren":7.0,"nuc":15.7,"coal":41.5,"oil":20.4,"gas":17.7,"other":0.0,"co2":11.2},"2015":{"ren":10.4,"nuc":15.9,"coal":39.0,"oil":21.2,"gas":15.4,"other":0.0,"co2":10.0},"2020":{"ren":12.7,"nuc":18.6,"coal":30.5,"oil":21.4,"gas":18.0,"other":0.0,"co2":8.7},"2024":{"ren":14.3,"nuc":19.5,"coal":25.3,"oil":26.3,"gas":15.1,"other":0.0,"co2":7.0}},"Denmark":{"1990":{"ren":5.7,"nuc":0.0,"coal":32.2,"oil":48.4,"gas":9.6,"other":4.1,"co2":10.4},"1995":{"ren":6.3,"nuc":0.0,"coal":30.0,"oil":48.3,"gas":14.6,"other":0.8,"co2":11.8},"2000":{"ren":9.0,"nuc":0.0,"coal":19.2,"oil":48.5,"gas":21.4,"other":1.9,"co2":10.2},"2005":{"ren":14.2,"nuc":0.0,"coal":18.0,"oil":43.8,"gas":21.4,"other":2.6,"co2":9.5},"2010":{"ren":19.0,"nuc":0.0,"coal":18.1,"oil":40.3,"gas":21.0,"other":1.5,"co2":8.9},"2015":{"ren":27.5,"nuc":0.0,"coal":10.1,"oil":41.3,"gas":15.8,"other":5.2,"co2":6.2},"2020":{"ren":37.4,"nuc":0.0,"coal":4.9,"oil":38.6,"gas":12.7,"other":6.3,"co2":4.9},"2024":{"ren":42.6,"nuc":0.0,"coal":2.6,"oil":41.3,"gas":8.3,"other":5.3,"co2":4.7}},"Estonia":{"1990":{"ren":1.7,"nuc":0.0,"coal":2.0,"oil":28.2,"gas":11.2,"other":56.9,"co2":23.5},"1995":{"ren":8.6,"nuc":0.0,"coal":0.6,"oil":17.5,"gas":10.2,"other":63.0,"co2":12.4},"2000":{"ren":10.7,"nuc":0.0,"coal":0.8,"oil":16.1,"gas":13.8,"other":58.7,"co2":11.1},"2005":{"ren":10.5,"nuc":0.0,"coal":0.2,"oil":16.7,"gas":14.2,"other":58.4,"co2":12.6},"2010":{"ren":13.9,"nuc":0.0,"coal":0.4,"oil":13.3,"gas":9.2,"other":63.3,"co2":14.2},"2015":{"ren":18.2,"nuc":0.0,"coal":0.3,"oil":12.0,"gas":7.6,"other":61.9,"co2":12.0},"2020":{"ren":27.5,"nuc":0.0,"coal":-0.1,"oil":5.3,"gas":7.7,"other":59.5,"co2":6.9},"2024":{"ren":35.9,"nuc":0.0,"coal":0.0,"oil":2.5,"gas":6.5,"other":55.0,"co2":6.1}},"Finland":{"1990":{"ren":18.8,"nuc":17.0,"coal":14.0,"oil":35.4,"gas":7.5,"other":7.3,"co2":11.4},"1995":{"ren":20.7,"nuc":16.8,"coal":14.6,"oil":29.9,"gas":9.6,"other":8.4,"co2":11.4},"2000":{"ren":23.2,"nuc":17.3,"coal":10.8,"oil":30.4,"gas":10.3,"other":8.0,"co2":11.0},"2005":{"ren":22.9,"nuc":17.0,"coal":9.2,"oil":31.2,"gas":10.2,"other":9.5,"co2":10.9},"2010":{"ren":25.1,"nuc":15.0,"coal":12.4,"oil":27.7,"gas":10.4,"other":9.4,"co2":11.9},"2015":{"ren":31.8,"nuc":17.0,"coal":8.3,"oil":26.5,"gas":6.8,"other":9.6,"co2":8.1},"2020":{"ren":37.0,"nuc":17.1,"coal":5.7,"oil":25.1,"gas":6.5,"other":8.5,"co2":6.8},"2024":{"ren":41.3,"nuc":23.4,"coal":4.2,"oil":23.0,"gas":4.4,"other":3.7,"co2":5.3}},"France":{"1990":{"ren":6.6,"nuc":35.4,"coal":8.8,"oil":39.3,"gas":11.4,"other":0.0,"co2":6.9},"1995":{"ren":7.0,"nuc":40.2,"coal":6.6,"oil":36.2,"gas":12.2,"other":0.0,"co2":6.7},"2000":{"ren":6.0,"nuc":41.4,"coal":5.8,"oil":35.0,"gas":13.8,"other":0.0,"co2":6.8},"2005":{"ren":5.7,"nuc":41.6,"coal":5.1,"oil":34.5,"gas":14.7,"other":0.0,"co2":6.8},"2010":{"ren":8.2,"nuc":41.0,"coal":4.4,"oil":31.3,"gas":15.7,"other":0.0,"co2":5.9},"2015":{"ren":9.4,"nuc":43.5,"coal":3.6,"oil":31.6,"gas":13.4,"other":0.0,"co2":5.1},"2020":{"ren":12.9,"nuc":41.0,"coal":2.4,"oil":29.2,"gas":15.5,"other":0.0,"co2":4.3},"2024":{"ren":16.3,"nuc":40.2,"coal":2.4,"oil":31.2,"gas":12.5,"other":0.0,"co2":4.0}},"Georgia":{"2015":{"ren":24.0,"nuc":0.0,"coal":5.7,"oil":26.6,"gas":43.6,"other":0.1,"co2":2.6},"2020":{"ren":19.3,"nuc":0.0,"coal":4.3,"oil":27.5,"gas":46.5,"other":2.5,"co2":2.7},"2024":{"ren":19.6,"nuc":0.0,"coal":3.1,"oil":29.5,"gas":47.6,"other":0.3,"co2":3.1}},"Germany":{"1990":{"ren":1.5,"nuc":11.1,"coal":35.9,"oil":35.9,"gas":15.3,"other":0.3,"co2":13.2},"1995":{"ren":1.7,"nuc":11.5,"coal":26.7,"oil":39.9,"gas":19.6,"other":0.5,"co2":11.5},"2000":{"ren":2.6,"nuc":12.7,"coal":24.6,"oil":38.7,"gas":20.8,"other":0.6,"co2":11.0},"2005":{"ren":5.4,"nuc":12.1,"coal":23.5,"oil":36.4,"gas":22.3,"other":0.4,"co2":10.6},"2010":{"ren":9.2,"nuc":10.6,"coal":23.2,"oil":34.0,"gas":22.3,"other":0.8,"co2":10.2},"2015":{"ren":12.5,"nuc":7.4,"coal":24.8,"oil":35.0,"gas":20.3,"other":0.0,"co2":9.8},"2020":{"ren":16.4,"nuc":5.8,"coal":15.6,"oil":35.2,"gas":26.1,"other":0.9,"co2":7.7},"2024":{"ren":19.8,"nuc":0.0,"coal":15.0,"oil":37.1,"gas":25.7,"other":2.5,"co2":6.8}},"Greece":{"1990":{"ren":4.5,"nuc":0.0,"coal":32.6,"oil":62.1,"gas":0.6,"other":0.2,"co2":8.1},"1995":{"ren":4.8,"nuc":0.0,"coal":31.0,"oil":63.7,"gas":0.2,"other":0.4,"co2":8.3},"2000":{"ren":4.6,"nuc":0.0,"coal":28.7,"oil":61.1,"gas":5.4,"other":0.2,"co2":9.6},"2005":{"ren":5.0,"nuc":0.0,"coal":26.4,"oil":60.6,"gas":6.9,"other":1.0,"co2":10.4},"2010":{"ren":7.1,"nuc":0.0,"coal":25.3,"oil":55.5,"gas":10.4,"other":1.7,"co2":8.8},"2015":{"ren":11.0,"nuc":0.0,"coal":21.7,"oil":53.5,"gas":10.3,"other":3.5,"co2":6.9},"2020":{"ren":15.2,"nuc":0.0,"coal":8.3,"oil":50.7,"gas":22.3,"other":3.5,"co2":5.2},"2024":{"ren":18.5,"nuc":0.0,"coal":3.3,"oil":56.9,"gas":21.3,"other":0.0,"co2":5.3}},"Hungary":{"1990":{"ren":2.6,"nuc":12.2,"coal":21.3,"oil":30.1,"gas":30.6,"other":3.3,"co2":7.1},"1995":{"ren":3.3,"nuc":13.9,"coal":17.8,"oil":28.8,"gas":35.2,"other":0.9,"co2":6.0},"2000":{"ren":3.3,"nuc":14.7,"coal":15.3,"oil":27.2,"gas":38.3,"other":1.3,"co2":5.7},"2005":{"ren":5.9,"nuc":12.7,"coal":10.8,"oil":26.1,"gas":42.4,"other":2.1,"co2":6.0},"2010":{"ren":10.4,"nuc":14.9,"coal":10.2,"oil":25.6,"gas":36.9,"other":2.0,"co2":5.2},"2015":{"ren":12.0,"nuc":15.8,"coal":9.4,"oil":27.9,"gas":29.7,"other":5.2,"co2":4.7},"2020":{"ren":11.3,"nuc":15.5,"coal":6.4,"oil":28.5,"gas":33.5,"other":4.6,"co2":4.8},"2024":{"ren":14.8,"nuc":16.6,"coal":3.0,"oil":31.9,"gas":29.1,"other":4.6,"co2":4.1}},"Iceland":{"1990":{"ren":66.9,"nuc":0.0,"coal":2.7,"oil":30.4,"gas":0.0,"other":0.0,"co2":8.7},"1995":{"ren":65.9,"nuc":0.0,"coal":2.3,"oil":31.8,"gas":0.0,"other":0.0,"co2":9.2},"2000":{"ren":70.6,"nuc":0.0,"coal":2.9,"oil":26.6,"gas":0.0,"other":0.0,"co2":10.4},"2005":{"ren":69.3,"nuc":0.0,"coal":2.9,"oil":27.8,"gas":0.0,"other":0.0,"co2":10.0},"2010":{"ren":85.5,"nuc":0.0,"coal":1.6,"oil":12.9,"gas":0.0,"other":0.0,"co2":11.4},"2015":{"ren":84.2,"nuc":0.0,"coal":1.6,"oil":14.2,"gas":0.0,"other":0.0,"co2":10.7},"2020":{"ren":87.9,"nuc":0.0,"coal":1.5,"oil":10.5,"gas":0.0,"other":0.0,"co2":9.1},"2024":{"ren":83.6,"nuc":0.0,"coal":1.8,"oil":14.6,"gas":0.0,"other":0.0,"co2":9.7}},"Ireland":{"1990":{"ren":1.6,"nuc":0.0,"coal":20.3,"oil":47.6,"gas":18.2,"other":12.3,"co2":9.4},"1995":{"ren":1.4,"nuc":0.0,"coal":16.3,"oil":53.2,"gas":21.3,"other":7.8,"co2":9.9},"2000":{"ren":1.6,"nuc":0.0,"coal":12.5,"oil":57.4,"gas":23.7,"other":4.8,"co2":11.9},"2005":{"ren":2.4,"nuc":0.0,"coal":12.1,"oil":57.1,"gas":22.4,"other":6.0,"co2":11.6},"2010":{"ren":4.5,"nuc":0.0,"coal":8.1,"oil":52.1,"gas":30.9,"other":4.4,"co2":9.2},"2015":{"ren":8.0,"nuc":0.0,"coal":10.2,"oil":49.3,"gas":26.2,"other":6.2,"co2":8.2},"2020":{"ren":13.0,"nuc":0.0,"coal":3.2,"oil":45.8,"gas":32.7,"other":5.3,"co2":7.0},"2024":{"ren":14.2,"nuc":0.0,"coal":2.0,"oil":50.1,"gas":28.9,"other":4.9,"co2":6.3}},"Italy":{"1990":{"ren":4.3,"nuc":0.0,"coal":9.7,"oil":58.1,"gas":25.9,"other":2.1,"co2":7.7},"1995":{"ren":4.7,"nuc":0.0,"coal":7.5,"oil":58.4,"gas":27.3,"other":2.1,"co2":7.8},"2000":{"ren":5.7,"nuc":0.0,"coal":7.1,"oil":51.9,"gas":32.9,"other":2.3,"co2":8.2},"2005":{"ren":7.4,"nuc":0.0,"coal":8.6,"oil":44.6,"gas":36.9,"other":2.6,"co2":8.6},"2010":{"ren":12.2,"nuc":0.0,"coal":7.6,"oil":39.7,"gas":37.8,"other":2.7,"co2":7.2},"2015":{"ren":16.7,"nuc":0.0,"coal":7.8,"oil":37.2,"gas":35.1,"other":3.3,"co2":6.0},"2020":{"ren":20.4,"nuc":0.0,"coal":3.5,"oil":32.9,"gas":40.5,"other":2.7,"co2":5.1},"2024":{"ren":20.9,"nuc":0.0,"coal":1.6,"oil":37.9,"gas":35.6,"other":3.9,"co2":5.1}},"Latvia":{"1990":{"ren":12.4,"nuc":0.0,"coal":7.5,"oil":47.3,"gas":28.2,"other":4.6,"co2":7.4},"1995":{"ren":26.3,"nuc":0.0,"coal":3.7,"oil":43.0,"gas":21.1,"other":6.0,"co2":3.7},"2000":{"ren":30.8,"nuc":0.0,"coal":1.9,"oil":33.7,"gas":28.2,"other":5.5,"co2":3.0},"2005":{"ren":30.4,"nuc":0.0,"coal":1.6,"oil":36.0,"gas":28.0,"other":3.9,"co2":3.5},"2010":{"ren":29.4,"nuc":0.0,"coal":2.2,"oil":36.3,"gas":30.0,"other":2.2,"co2":4.1},"2015":{"ren":33.2,"nuc":0.0,"coal":1.0,"oil":37.6,"gas":23.7,"other":4.6,"co2":3.7},"2020":{"ren":39.6,"nuc":0.0,"coal":0.5,"oil":35.7,"gas":19.9,"other":4.2,"co2":3.7},"2024":{"ren":45.7,"nuc":0.0,"coal":0.2,"oil":34.7,"gas":16.2,"other":3.2,"co2":3.5}},"Lithuania":{"1990":{"ren":2.0,"nuc":28.0,"coal":4.8,"oil":42.4,"gas":28.5,"other":0.0,"co2":9.7},"1995":{"ren":5.5,"nuc":36.0,"coal":2.5,"oil":35.1,"gas":22.6,"other":0.0,"co2":4.2},"2000":{"ren":9.1,"nuc":31.3,"coal":1.1,"oil":30.3,"gas":27.7,"other":0.6,"co2":3.4},"2005":{"ren":9.7,"nuc":30.7,"coal":1.8,"oil":31.0,"gas":27.1,"other":0.0,"co2":4.2},"2010":{"ren":14.7,"nuc":0.0,"coal":2.5,"oil":37.3,"gas":34.5,"other":11.0,"co2":4.5},"2015":{"ren":19.5,"nuc":0.0,"coal":2.2,"oil":36.9,"gas":28.5,"other":12.9,"co2":4.5},"2020":{"ren":21.2,"nuc":0.0,"coal":1.7,"oil":39.2,"gas":25.2,"other":12.6,"co2":4.8},"2024":{"ren":29.8,"nuc":0.0,"coal":1.1,"oil":41.9,"gas":17.9,"other":9.3,"co2":4.4}},"Luxembourg":{"1990":{"ren":0.5,"nuc":0.0,"coal":31.6,"oil":45.7,"gas":12.2,"other":9.9,"co2":30.9},"1995":{"ren":1.0,"nuc":0.0,"coal":14.7,"oil":54.3,"gas":16.8,"other":13.2,"co2":22.4},"2000":{"ren":1.1,"nuc":0.0,"coal":3.0,"oil":63.5,"gas":18.4,"other":14.1,"co2":20.0},"2005":{"ren":1.5,"nuc":0.0,"coal":1.6,"oil":65.8,"gas":24.5,"other":6.6,"co2":25.9},"2010":{"ren":2.8,"nuc":0.0,"coal":1.4,"oil":61.9,"gas":25.8,"other":8.2,"co2":22.1},"2015":{"ren":5.0,"nuc":0.0,"coal":1.2,"oil":63.1,"gas":18.4,"other":12.3,"co2":16.4},"2020":{"ren":10.1,"nuc":0.0,"coal":1.0,"oil":60.3,"gas":15.7,"other":13.0,"co2":12.8},"2024":{"ren":12.6,"nuc":0.0,"coal":0.5,"oil":59.5,"gas":14.2,"other":13.1,"co2":10.5}},"Malta":{"1990":{"ren":0.0,"nuc":0.0,"coal":22.4,"oil":77.6,"gas":0.0,"other":0.0,"co2":6.6},"1995":{"ren":0.0,"nuc":0.0,"coal":3.7,"oil":96.3,"gas":0.0,"other":0.0,"co2":6.4},"2000":{"ren":0.0,"nuc":0.0,"coal":0.0,"oil":100.0,"gas":0.0,"other":0.0,"co2":6.2},"2005":{"ren":0.0,"nuc":0.0,"coal":0.0,"oil":100.0,"gas":0.0,"other":0.0,"co2":6.4},"2010":{"ren":0.2,"nuc":0.0,"coal":0.0,"oil":99.8,"gas":0.0,"other":0.0,"co2":6.2},"2015":{"ren":0.9,"nuc":0.0,"coal":0.0,"oil":95.1,"gas":0.0,"other":3.9,"co2":3.8},"2020":{"ren":1.9,"nuc":0.0,"coal":0.0,"oil":86.0,"gas":10.8,"other":1.2,"co2":3.1},"2024":{"ren":2.4,"nuc":0.0,"coal":0.0,"oil":84.7,"gas":10.2,"other":2.7,"co2":3.2}},"Moldova":{"2010":{"ren":20.4,"nuc":0.0,"coal":4.5,"oil":30.7,"gas":34.1,"other":10.3,"co2":1.3},"2015":{"ren":25.2,"nuc":0.0,"coal":3.7,"oil":31.9,"gas":28.2,"other":11.0,"co2":1.5},"2020":{"ren":22.7,"nuc":0.0,"coal":2.9,"oil":35.1,"gas":28.5,"other":10.8,"co2":1.7},"2024":{"ren":20.9,"nuc":0.0,"coal":1.9,"oil":42.1,"gas":24.2,"other":10.9,"co2":1.8}},"Montenegro":{"2005":{"ren":29.2,"nuc":0.0,"coal":27.5,"oil":28.5,"gas":0.0,"other":14.8,"co2":3.0},"2010":{"ren":35.2,"nuc":0.0,"coal":37.2,"oil":27.6,"gas":0.0,"other":0.0,"co2":3.8},"2015":{"ren":29.2,"nuc":0.0,"coal":37.1,"oil":29.2,"gas":0.0,"other":4.4,"co2":3.6},"2020":{"ren":29.4,"nuc":0.0,"coal":37.5,"oil":32.5,"gas":0.0,"other":0.7,"co2":4.0},"2024":{"ren":31.9,"nuc":0.0,"coal":29.6,"oil":39.7,"gas":0.0,"other":0.0,"co2":3.7}},"Netherlands":{"1990":{"ren":0.9,"nuc":1.1,"coal":11.0,"oil":47.2,"gas":38.5,"other":1.3,"co2":10.8},"1995":{"ren":1.0,"nuc":1.2,"coal":10.3,"oil":46.2,"gas":39.8,"other":1.5,"co2":11.1},"2000":{"ren":1.5,"nuc":1.1,"coal":8.5,"oil":48.2,"gas":38.3,"other":2.4,"co2":10.7},"2005":{"ren":2.3,"nuc":1.0,"coal":8.1,"oil":50.7,"gas":35.6,"other":2.3,"co2":10.8},"2010":{"ren":3.3,"nuc":0.9,"coal":7.5,"oil":47.2,"gas":40.1,"other":1.0,"co2":10.9},"2015":{"ren":4.2,"nuc":1.1,"coal":12.5,"oil":47.8,"gas":32.4,"other":2.0,"co2":9.6},"2020":{"ren":8.4,"nuc":1.1,"coal":4.9,"oil":46.8,"gas":37.7,"other":1.1,"co2":7.8},"2024":{"ren":13.1,"nuc":1.1,"coal":5.3,"oil":50.1,"gas":29.6,"other":0.9,"co2":6.3}},"North Macedonia":{"1990":{"ren":1.7,"nuc":0.0,"coal":53.8,"oil":44.2,"gas":0.0,"other":0.3,"co2":5.4},"1995":{"ren":10.7,"nuc":0.0,"coal":56.2,"oil":32.8,"gas":0.0,"other":0.4,"co2":4.0},"2000":{"ren":12.2,"nuc":0.0,"coal":49.6,"oil":35.9,"gas":2.0,"other":0.4,"co2":4.1},"2005":{"ren":11.8,"nuc":0.0,"coal":50.1,"oil":31.2,"gas":2.1,"other":4.7,"co2":4.1},"2010":{"ren":14.4,"nuc":0.0,"coal":45.3,"oil":32.8,"gas":3.3,"other":4.2,"co2":4.0},"2015":{"ren":15.6,"nuc":0.0,"coal":35.6,"oil":36.5,"gas":4.2,"other":8.1,"co2":3.4},"2020":{"ren":13.8,"nuc":0.0,"coal":29.3,"oil":38.5,"gas":10.8,"other":7.7,"co2":3.7},"2024":{"ren":17.0,"nuc":0.0,"coal":25.0,"oil":44.2,"gas":11.5,"other":2.4,"co2":3.6}},"Norway":{"1990":{"ren":53.3,"nuc":0.0,"coal":4.0,"oil":39.4,"gas":9.3,"other":0.0,"co2":8.3},"1995":{"ren":48.8,"nuc":0.0,"coal":4.3,"oil":34.3,"gas":14.7,"other":0.0,"co2":8.8},"2000":{"ren":51.1,"nuc":0.0,"coal":4.0,"oil":35.0,"gas":15.7,"other":0.0,"co2":9.4},"2005":{"ren":43.2,"nuc":0.0,"coal":2.6,"oil":43.7,"gas":13.4,"other":0.0,"co2":9.4},"2010":{"ren":36.6,"nuc":0.0,"coal":2.3,"oil":39.2,"gas":19.3,"other":2.6,"co2":9.3},"2015":{"ren":52.2,"nuc":0.0,"coal":3.1,"oil":24.7,"gas":23.2,"other":0.0,"co2":8.8},"2020":{"ren":52.7,"nuc":0.0,"coal":2.8,"oil":31.6,"gas":17.6,"other":0.0,"co2":7.7},"2024":{"ren":56.7,"nuc":0.0,"coal":2.5,"oil":30.9,"gas":14.0,"other":0.0,"co2":6.7}},"Poland":{"1990":{"ren":1.5,"nuc":0.0,"coal":76.0,"oil":13.2,"gas":8.6,"other":0.7,"co2":9.9},"1995":{"ren":3.9,"nuc":0.0,"coal":70.4,"oil":16.1,"gas":9.0,"other":0.6,"co2":9.4},"2000":{"ren":4.2,"nuc":0.0,"coal":62.9,"oil":22.2,"gas":11.1,"other":0.0,"co2":8.3},"2005":{"ren":4.8,"nuc":0.0,"coal":58.8,"oil":24.0,"gas":13.2,"other":0.0,"co2":8.5},"2010":{"ren":7.2,"nuc":0.0,"coal":54.2,"oil":25.7,"gas":12.6,"other":0.3,"co2":8.8},"2015":{"ren":9.5,"nuc":0.0,"coal":50.4,"oil":25.2,"gas":14.3,"other":0.6,"co2":8.2},"2020":{"ren":12.5,"nuc":0.0,"coal":39.6,"oil":28.8,"gas":16.9,"other":2.1,"co2":7.9},"2024":{"ren":15.0,"nuc":0.0,"coal":32.6,"oil":33.9,"gas":17.3,"other":1.2,"co2":7.1}},"Portugal":{"1990":{"ren":18.4,"nuc":0.0,"coal":15.4,"oil":66.2,"gas":0.0,"other":0.0,"co2":4.5},"1995":{"ren":15.6,"nuc":0.0,"coal":17.0,"oil":67.0,"gas":0.0,"other":0.4,"co2":5.4},"2000":{"ren":14.4,"nuc":0.0,"coal":14.6,"oil":62.5,"gas":7.8,"other":0.6,"co2":6.4},"2005":{"ren":12.4,"nuc":0.0,"coal":12.0,"oil":59.7,"gas":13.4,"other":2.6,"co2":6.6},"2010":{"ren":22.0,"nuc":0.0,"coal":6.7,"oil":51.7,"gas":18.1,"other":1.6,"co2":5.0},"2015":{"ren":23.0,"nuc":0.0,"coal":13.4,"oil":45.4,"gas":16.7,"other":1.5,"co2":5.0},"2020":{"ren":28.8,"nuc":0.0,"coal":2.6,"oil":43.6,"gas":23.6,"other":1.4,"co2":4.0},"2024":{"ren":34.2,"nuc":0.0,"coal":0.0,"oil":46.8,"gas":14.1,"other":4.9,"co2":3.4}},"Romania":{"1990":{"ren":2.5,"nuc":0.0,"coal":20.1,"oil":30.5,"gas":45.6,"other":1.3,"co2":7.7},"1995":{"ren":6.0,"nuc":0.0,"coal":23.1,"oil":29.0,"gas":41.1,"other":0.8,"co2":5.5},"2000":{"ren":11.0,"nuc":3.8,"coal":20.3,"oil":27.5,"gas":37.2,"other":0.1,"co2":4.2},"2005":{"ren":12.8,"nuc":3.7,"coal":22.6,"oil":25.3,"gas":36.0,"other":0.0,"co2":4.8},"2010":{"ren":16.7,"nuc":8.3,"coal":19.8,"oil":24.7,"gas":30.8,"other":0.0,"co2":4.1},"2015":{"ren":18.7,"nuc":9.2,"coal":18.5,"oil":27.2,"gas":27.9,"other":0.0,"co2":3.9},"2020":{"ren":18.6,"nuc":8.9,"coal":10.8,"oil":30.0,"gas":30.0,"other":1.7,"co2":3.8},"2024":{"ren":19.4,"nuc":9.1,"coal":7.3,"oil":35.7,"gas":26.5,"other":2.0,"co2":3.6}},"Serbia":{"1990":{"ren":9.2,"nuc":0.0,"coal":51.7,"oil":26.9,"gas":13.1,"other":0.0,"co2":7.3},"1995":{"ren":11.6,"nuc":0.0,"coal":64.8,"oil":13.9,"gas":9.9,"other":0.0,"co2":5.0},"2000":{"ren":12.1,"nuc":0.0,"coal":63.7,"oil":11.0,"gas":11.3,"other":1.9,"co2":5.1},"2005":{"ren":11.1,"nuc":0.0,"coal":50.2,"oil":27.6,"gas":12.1,"other":0.0,"co2":6.6},"2010":{"ren":13.2,"nuc":0.0,"coal":49.7,"oil":25.4,"gas":11.9,"other":0.0,"co2":6.2},"2015":{"ren":13.0,"nuc":0.0,"coal":52.2,"oil":23.5,"gas":11.8,"other":0.0,"co2":6.1},"2020":{"ren":15.6,"nuc":0.0,"coal":49.5,"oil":22.7,"gas":12.5,"other":0.0,"co2":6.6},"2024":{"ren":17.1,"nuc":0.0,"coal":40.9,"oil":27.1,"gas":14.3,"other":0.7,"co2":6.2}},"Slovakia":{"1990":{"ren":1.5,"nuc":14.6,"coal":36.8,"oil":21.0,"gas":23.9,"other":2.1,"co2":11.7},"1995":{"ren":2.8,"nuc":16.6,"coal":30.3,"oil":19.1,"gas":29.3,"other":1.9,"co2":8.3},"2000":{"ren":2.8,"nuc":24.0,"coal":24.1,"oil":16.1,"gas":32.6,"other":0.5,"co2":7.7},"2005":{"ren":4.3,"nuc":25.3,"coal":22.7,"oil":17.5,"gas":31.5,"other":0.0,"co2":8.0},"2010":{"ren":11.1,"nuc":20.9,"coal":21.1,"oil":19.0,"gas":27.2,"other":0.7,"co2":7.1},"2015":{"ren":12.8,"nuc":23.9,"coal":19.5,"oil":18.4,"gas":23.0,"other":2.4,"co2":6.4},"2020":{"ren":13.1,"nuc":24.6,"coal":14.0,"oil":21.9,"gas":24.9,"other":1.6,"co2":5.7},"2024":{"ren":13.0,"nuc":29.7,"coal":12.5,"oil":21.4,"gas":23.8,"other":0.0,"co2":5.3}},"Slovenia":{"1990":{"ren":9.1,"nuc":20.8,"coal":27.4,"oil":30.9,"gas":13.3,"other":0.0,"co2":7.6},"1995":{"ren":8.9,"nuc":20.2,"coal":22.6,"oil":38.3,"gas":12.2,"other":0.0,"co2":7.7},"2000":{"ren":13.7,"nuc":18.7,"coal":19.9,"oil":36.8,"gas":12.6,"other":0.0,"co2":7.6},"2005":{"ren":13.4,"nuc":20.0,"coal":20.3,"oil":34.3,"gas":12.2,"other":0.0,"co2":8.5},"2010":{"ren":16.0,"nuc":18.4,"coal":20.0,"oil":36.0,"gas":11.9,"other":0.0,"co2":8.1},"2015":{"ren":17.0,"nuc":20.3,"coal":16.3,"oil":35.8,"gas":10.1,"other":0.5,"co2":6.6},"2020":{"ren":18.5,"nuc":23.2,"coal":15.8,"oil":32.9,"gas":11.4,"other":0.0,"co2":6.1},"2024":{"ren":20.4,"nuc":21.7,"coal":12.3,"oil":36.7,"gas":11.3,"other":0.0,"co2":6.0}},"Spain":{"1990":{"ren":6.8,"nuc":15.2,"coal":20.9,"oil":51.7,"gas":5.4,"other":0.0,"co2":5.9},"1995":{"ren":5.2,"nuc":13.5,"coal":18.0,"oil":55.5,"gas":7.3,"other":0.6,"co2":6.6},"2000":{"ren":5.2,"nuc":12.3,"coal":16.1,"oil":54.2,"gas":11.7,"other":0.4,"co2":7.5},"2005":{"ren":5.5,"nuc":9.7,"coal":13.5,"oil":51.7,"gas":19.6,"other":0.0,"co2":8.4},"2010":{"ren":10.9,"nuc":11.6,"coal":5.3,"oil":50.1,"gas":22.5,"other":0.0,"co2":6.0},"2015":{"ren":13.0,"nuc":11.4,"coal":10.4,"oil":46.0,"gas":18.8,"other":0.3,"co2":5.8},"2020":{"ren":16.2,"nuc":12.8,"coal":2.6,"oil":44.0,"gas":23.6,"other":0.7,"co2":4.4},"2024":{"ren":18.7,"nuc":11.1,"coal":1.9,"oil":49.6,"gas":19.0,"other":0.0,"co2":4.6}},"Sweden":{"1990":{"ren":24.0,"nuc":36.6,"coal":5.7,"oil":31.9,"gas":1.2,"other":0.6,"co2":6.7},"1995":{"ren":24.9,"nuc":35.1,"coal":5.0,"oil":32.8,"gas":1.5,"other":0.8,"co2":6.7},"2000":{"ren":30.0,"nuc":30.1,"coal":4.5,"oil":31.8,"gas":1.6,"other":2.0,"co2":6.2},"2005":{"ren":27.3,"nuc":35.0,"coal":4.4,"oil":31.4,"gas":1.6,"other":0.3,"co2":6.0},"2010":{"ren":32.0,"nuc":27.7,"coal":4.1,"oil":31.5,"gas":2.8,"other":2.0,"co2":5.7},"2015":{"ren":41.9,"nuc":31.8,"coal":4.1,"oil":23.2,"gas":1.5,"other":0.0,"co2":4.4},"2020":{"ren":47.7,"nuc":25.4,"coal":3.2,"oil":23.4,"gas":2.7,"other":0.0,"co2":3.5},"2024":{"ren":48.4,"nuc":25.6,"coal":3.3,"oil":25.4,"gas":1.6,"other":0.0,"co2":3.6}},"Ukraine":{"1990":{"ren":0.5,"nuc":7.7,"coal":31.9,"oil":23.8,"gas":36.2,"other":0.0,"co2":13.6},"1995":{"ren":0.7,"nuc":11.1,"coal":30.9,"oil":15.4,"gas":41.8,"other":0.1,"co2":7.6},"2000":{"ren":0.9,"nuc":14.9,"coal":28.7,"oil":9.1,"gas":46.5,"other":0.0,"co2":5.8},"2005":{"ren":0.9,"nuc":16.2,"coal":26.3,"oil":10.4,"gas":46.5,"other":0.0,"co2":6.6},"2010":{"ren":2.1,"nuc":17.7,"coal":28.7,"oil":10.1,"gas":41.6,"other":0.0,"co2":6.3},"2015":{"ren":2.9,"nuc":24.8,"coal":32.2,"oil":11.4,"gas":28.0,"other":0.7,"co2":4.9},"2020":{"ren":5.6,"nuc":23.2,"coal":26.3,"oil":16.4,"gas":27.6,"other":0.9,"co2":4.6}},"United Kingdom":{"1990":{"ren":0.5,"nuc":7.9,"coal":29.4,"oil":39.7,"gas":22.0,"other":0.5,"co2":10.5},"1995":{"ren":0.8,"nuc":10.2,"coal":20.9,"oil":38.6,"gas":28.8,"other":0.7,"co2":9.7},"2000":{"ren":1.0,"nuc":9.3,"coal":15.5,"oil":36.5,"gas":37.1,"other":0.6,"co2":9.6},"2005":{"ren":1.6,"nuc":8.9,"coal":15.9,"oil":36.9,"gas":36.1,"other":0.6,"co2":9.4},"2010":{"ren":3.4,"nuc":6.5,"coal":14.8,"oil":35.7,"gas":39.3,"other":0.3,"co2":8.1},"2015":{"ren":8.2,"nuc":8.0,"coal":12.7,"oil":38.0,"gas":31.6,"other":1.4,"co2":6.5}}};
+
+const KEY_YEARS = [1990,1995,2000,2005,2010,2015,2020,2024];
+const KEYS = ['ren','nuc','coal','oil','gas','other'];
+const COLORS = {
+  ren:   '#2ecc71',
+  nuc:   '#f39c12',
+  coal:  '#636363',
+  oil:   '#2c5f8a',
+  gas:   '#9b59b6',
+  other: '#4a4a4a'
+};
+
+function drawPortrait(canvas, country, size) {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width  = size + 'px';
+  canvas.style.height = size + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, size, size);
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = size / 2 - 4;
+  const minR = maxR * 0.12;
+
+  const countryData = DATA[country];
+  const availYears  = KEY_YEARS.filter(y => countryData[y]);
+  const n = availYears.length;
+  if (n === 0) return;
+
+  const ringW = (maxR - minR) / n;
+
+  availYears.forEach((year, i) => {
+    const d   = countryData[year];
+    const r1  = minR + i * ringW;
+    const r2  = r1 + ringW - 1.5;
+    const mid = (r1 + r2) / 2;
+
+    // calculate actual percentages and normalise to 100%
+    const vals = KEYS.map(k => Math.max(d[k] || 0, 0));
+    const sum  = vals.reduce((a,b)=>a+b,0) || 100;
+    const pcts = vals.map(v => v/sum);
+
+    let angle = -Math.PI / 2; // start at top
+    pcts.forEach((pct, ki) => {
+      if (pct < 0.001) return;
+      const sweep = pct * 2 * Math.PI;
+
+      // ring segment
+      ctx.beginPath();
+      ctx.arc(cx, cy, r2, angle, angle + sweep);
+      ctx.arc(cx, cy, r1, angle + sweep, angle, true);
+      ctx.closePath();
+      ctx.fillStyle = COLORS[KEYS[ki]];
+      ctx.fill();
+
+      angle += sweep;
+    });
+  });
+
+  // centre dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, minR * 0.6, 0, Math.PI*2);
+  ctx.fillStyle = '#0d1117';
+  ctx.fill();
+}
+
+// build grid
+const grid = document.getElementById('grid');
+const countries = Object.keys(DATA).sort();
+
+countries.forEach(country => {
+  const d = DATA[country];
+  if (!d || Object.keys(d).length === 0) return;
+
+  const card = document.createElement('div');
+  card.className = 'portrait-card';
+
+  const canvas = document.createElement('canvas');
+  card.appendChild(canvas);
+
+  const label = document.createElement('div');
+  label.className = 'country-label';
+  label.textContent = country;
+  card.appendChild(label);
+
+  const latest = d[2024] || d[2020] || d[Object.keys(d).pop()];
+  const renLabel = document.createElement('div');
+  renLabel.className = 'ren-label';
+  renLabel.textContent = latest ? latest.ren + '% renewable' : '';
+  card.appendChild(renLabel);
+
+  grid.appendChild(card);
+
+  // draw small portrait
+  drawPortrait(canvas, country, 130);
+
+  // click → modal
+  card.addEventListener('click', () => openModal(country));
+});
+
+// ── modal ──────────────────────────────────────────────────
+const overlay   = document.getElementById('modalOverlay');
+const modalClose= document.getElementById('modalClose');
+const modalTitle= document.getElementById('modalTitle');
+const modalCanvas=document.getElementById('modalCanvas');
+const yearRows  = document.getElementById('yearRows');
+
+function openModal(country) {
+  modalTitle.textContent = country;
+  drawPortrait(modalCanvas, country, 200);
+
+  yearRows.innerHTML = '';
+  const d = DATA[country];
+  KEY_YEARS.forEach(yr => {
+    if (!d[yr]) return;
+    const row = document.createElement('div');
+    row.className = 'year-row';
+
+    const tag = document.createElement('div');
+    tag.className = 'year-tag';
+    tag.textContent = yr;
+    row.appendChild(tag);
+
+    const bars = document.createElement('div');
+    bars.className = 'mini-bars';
+    KEYS.forEach(k => {
+      const b = document.createElement('div');
+      b.className = 'mini-bar';
+      b.style.width = (d[yr][k] || 0) + '%';
+      b.style.background = COLORS[k];
+      b.title = k + ': ' + (d[yr][k]||0) + '%';
+      bars.appendChild(b);
+    });
+    row.appendChild(bars);
+
+    const co2 = document.createElement('div');
+    co2.className = 'year-co2';
+    co2.textContent = d[yr].co2 ? d[yr].co2 + 't CO₂' : '';
+    row.appendChild(co2);
+
+    yearRows.appendChild(row);
+  });
+
+  overlay.classList.add('open');
+}
+
+modalClose.addEventListener('click', () => overlay.classList.remove('open'));
+overlay.addEventListener('click', e => { if (e.target===overlay) overlay.classList.remove('open'); });
+</script>
+</body>
+</html>
