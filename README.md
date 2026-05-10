@@ -13,6 +13,8 @@ A comprehensive data visualization project exploring the shift from fossil fuels
 * **[energy_portraits.html](energy_portraits.html)**: Our unique visualization component – a series of concentric "tree-ring" portraits showing the decade-by-decade energy evolution of European nations.
 * **[co2_calculator.html](co2_calculator.html)**: An interactive JavaScript-based tool for carbon calculation.
 
+Note: Since the free version of WordPress did not allow for JavaScript embeddings, please refer to the .html files seperately.
+
 ## AI Use Statement
 This project utilized AI tools for code optimization, data structuring, and descriptive assistance. A detailed **AI Use Appendix** documenting the specific prompts and ethical oversight applied during this process is included within the final report.
 
